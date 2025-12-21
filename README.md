@@ -37,3 +37,30 @@ You can check out the [create-t3-app GitHub repository](https://github.com/t3-os
 ## How do I deploy this?
 
 Follow the t3-stack deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+
+
+## Local Development
+
+### Generate SSL certificates
+
+'''bash
+   openssl req -new -x509 -days 365 -nodes \
+     -out server.crt -keyout server.key \
+     -subj "/CN=localhost"
+   chmod 600 server.key
+   chmod 644 server.crt
+'''
+
+Then start a new docker container with the following command:
+```bash
+docker run --name languagebuddy-postgres \
+  -e POSTGRES_USER=languagebuddy \ 
+  -e POSTGRES_PASSWORD=languagebuddy \ 
+  -e POSTGRES_DB=languagebuddy \
+  -p 5432:5432 \
+  -v <path to your postgres-ssl directory>:/var/lib/postgresql/ssl:ro \
+  -d postgres:16 \
+  -c ssl=on \
+  -c ssl_cert_file=/var/lib/postgresql/ssl/server.crt \
+  -c ssl_key_file=/var/lib/postgresql/ssl/server.key
+```
