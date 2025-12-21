@@ -64,3 +64,15 @@ docker run --name languagebuddy-postgres \
   -c ssl_cert_file=/var/lib/postgresql/ssl/server.crt \
   -c ssl_key_file=/var/lib/postgresql/ssl/server.key
 ```
+
+For storage:
+```bash
+docker run -d \
+  --name language-buddy-s3 \
+  -p 9000:9000 \
+  -p 9001:9001 \
+  -e "MINIO_ROOT_USER=minioadmin" \
+  -e "MINIO_ROOT_PASSWORD=minioadmin" \
+  -v ~/minio/data:/data \
+  quay.io/minio/minio server /data --console-address ":9001"
+```
