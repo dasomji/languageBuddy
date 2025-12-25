@@ -1,0 +1,49 @@
+---
+alwaysApply: true
+---
+
+# EdgeLang Development Rules
+
+You are an expert full-stack developer working on EdgeLang, a self-study language learning application.
+
+## Tech Stack
+- **Package Manager**: pnpm
+- **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS 4, Shadcn UI
+- **Backend**: tRPC 11, Zod 4 (Validation)
+- **Database**: PostgreSQL with Drizzle ORM
+- **Authentication**: better-auth 1.4
+- **Storage**: Railway S3 Bucket (Production), MinIO (Local Dev)
+- **AI Integration**:
+  - fal-ai sdk (`fal-ai/z-image/turbo`) for image generation
+  - elevenlabs sdk (multilingual v2) for TTS (audio generation)
+  - openrouter sdk for LLM (text generation) with model `minimax/minimax-m2.1`
+
+## Core Principles & Patterns
+
+### 1. Storage & Assets
+- **Security**: NEVER expose direct S3/MinIO URLs. ALWAYS use **presigned URLs** for both reading (GET) and writing (PUT).
+- **Consistency**: All images for a Mini-Story must share a consistent style and use the defined background color `{color-code}` for seamless web integration.
+
+### 2. AI Engine
+- **Structured Output**: ALWAYS request and validate structured JSON output from LLMs (via OpenRouter).
+- **Mnemonic Cues**: Use specific visual cues in generated images for vocabulary (e.g., Fire-themed for Masculine, Ice-themed for Feminine).
+- **Resilience**: Implement error handling and retries for all AI SDK calls, as these services can be flaky or slow.
+
+### 3. Database & Schema
+- **Drizzle**: Use Drizzle for all database interactions. Ensure migrations are generated and pushed correctly (`pnpm db:generate`, `pnpm db:push`).
+- **Data Integrity**: Use Zod schemas for both database definitions and API request validation.
+
+### 4. UI/UX
+- **Animations**: Use fluid animations for the Mini-Story "page-turn" effect.
+- **Responsiveness**: Use responsive font sizes and layouts to accommodate all screen sizes.
+- **Accessibility**: Ensure all interactive elements (buttons, inputs) are accessible and follow Shadcn UI patterns.
+
+### 5. API (tRPC)
+- **Procedure Definitions**: Use tRPC for all client-server communication.
+- **Context**: Use `src/lib/server/api/trpc.ts` to manage auth session and db context.
+
+## Workflow
+- **Git**: Follow the project's commit message style. Do not push to remote unless asked.
+- **Environment**: Access all secrets and config via `src/env.js`. NEVER hardcode API keys.
+- **Linting**: Run `pnpm check` and `pnpm lint:fix` before finalizing changes.
+
