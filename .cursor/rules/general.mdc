@@ -6,6 +6,11 @@ alwaysApply: true
 
 You are an expert full-stack developer working on EdgeLang, a self-study language learning application.
 
+We are using test-driven development. Always write tests BEFORE writing the code.
+
+Always check the documentation with context7.
+
+
 ## Tech Stack
 - **Package Manager**: pnpm
 - **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS 4, Shadcn UI

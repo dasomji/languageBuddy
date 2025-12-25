@@ -1,0 +1,7 @@
+---
+alwaysApply: true
+---
+
+Never run drizzle-kit migrations or generations. It uses an interactive CLI, where you'll get stuck. I will run them manually.
+
+Tell me when to run migrations and when to generate them.
