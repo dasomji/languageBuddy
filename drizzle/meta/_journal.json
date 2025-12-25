@@ -8,6 +8,13 @@
       "when": 1766332585548,
       "tag": "0000_fat_energizer",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766697159026,
+      "tag": "0001_daffy_bishop",
+      "breakpoints": true
     }
   ]
 }

@@ -41,31 +41,62 @@ Follow the t3-stack deployment guides for [Vercel](https://create.t3.gg/en/deplo
 
 ## Local Development
 
-### Generate SSL certificates
+### Configuration
 
-'''bash
+Copy `.env.example` to `.env` and fill in the following values:
+
+```bash
+# Database
+DATABASE_URL="postgresql://languagebuddy:languagebuddy@localhost:5432/languagebuddy"
+
+# BetterAuth
+BETTER_AUTH_SECRET="your_secret_here"
+BETTER_AUTH_URL="http://localhost:3000"
+GOOGLE_CLIENT_ID="your_google_id"
+GOOGLE_CLIENT_SECRET="your_google_secret"
+
+# Storage (Local MinIO)
+S3_ACCESS_KEY_ID="minioadmin"
+S3_SECRET_ACCESS_KEY="minioadmin"
+S3_ENDPOINT="http://localhost:9000"
+S3_BUCKET_NAME="languagebuddy" # Create this bucket in MinIO Console (localhost:9001)
+S3_REGION="us-east-1"
+
+# AI Services
+OPENROUTER_API_KEY="your_openrouter_key"
+ELEVENLABS_API_KEY="your_elevenlabs_key"
+FAL_KEY="your_fal_key"
+```
+
+### Setup Services
+
+#### 1. Generate SSL certificates for Postgres
+```bash
    openssl req -new -x509 -days 365 -nodes \
      -out server.crt -keyout server.key \
      -subj "/CN=localhost"
    chmod 600 server.key
    chmod 644 server.crt
-'''
+```
 
-Then start a new docker container with the following command:
+#### 2. Start Infrastructure
+Run the following Docker containers:
+
+**PostgreSQL:**
 ```bash
 docker run --name languagebuddy-postgres \
-  -e POSTGRES_USER=languagebuddy \ 
-  -e POSTGRES_PASSWORD=languagebuddy \ 
+  -e POSTGRES_USER=languagebuddy \
+  -e POSTGRES_PASSWORD=languagebuddy \
   -e POSTGRES_DB=languagebuddy \
   -p 5432:5432 \
-  -v <path to your postgres-ssl directory>:/var/lib/postgresql/ssl:ro \
+  -v $(pwd):/var/lib/postgresql/ssl:ro \
   -d postgres:16 \
   -c ssl=on \
   -c ssl_cert_file=/var/lib/postgresql/ssl/server.crt \
   -c ssl_key_file=/var/lib/postgresql/ssl/server.key
 ```
 
-For storage:
+**MinIO (S3 Compatible Storage):**
 ```bash
 docker run -d \
   --name language-buddy-s3 \
@@ -75,4 +106,28 @@ docker run -d \
   -e "MINIO_ROOT_PASSWORD=minioadmin" \
   -v ~/minio/data:/data \
   quay.io/minio/minio server /data --console-address ":9001"
+```
+
+#### 3. Database Migrations
+After setting up Postgres, run:
+```bash
+pnpm db:generate
+pnpm db:push
+```
+
+## Core Utilities
+
+### Storage & Assets
+The project uses an S3-compatible storage layer (Railway S3 in production, MinIO locally). 
+**Important**: Never use direct URLs. Always use presigned URLs for reading and writing.
+
+Example usage from `src/lib/server/storage.ts`:
+```typescript
+import { getReadPresignedUrl, getWritePresignedUrl } from "~/lib/server/storage";
+
+// Get a URL to display an image
+const readUrl = await getReadPresignedUrl("path/to/image.png");
+
+// Get a URL to upload a file from the client
+const uploadUrl = await getWritePresignedUrl("path/to/new-audio.mp3", "audio/mpeg");
 ```
