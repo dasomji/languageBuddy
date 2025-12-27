@@ -16,7 +16,7 @@ export function AudioPlayer({
   src,
   autoPlay = false,
   onEnded,
-  delay = 1000,
+  delay = 0,
 }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -37,6 +37,9 @@ export function AudioPlayer({
       setCurrentTime(audio.currentTime);
     };
 
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
     const handleEnded = () => {
       setIsPlaying(false);
       onEnded?.();
@@ -44,6 +47,8 @@ export function AudioPlayer({
 
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
     audio.addEventListener("ended", handleEnded);
 
     // Set initial volume
@@ -52,16 +57,31 @@ export function AudioPlayer({
     return () => {
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("ended", handleEnded);
     };
-  }, [onEnded]);
+  }, [onEnded, volume]);
+
+  const lastSrcRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (autoPlay && src) {
+      const isNewSrc = lastSrcRef.current !== src;
+      const actualDelay = isNewSrc ? delay : 0;
+
       const timer = setTimeout(() => {
-        void audioRef.current?.play();
-      }, delay);
+        void audioRef.current?.play().catch((err) => {
+          console.warn("Audio play failed:", err);
+        });
+      }, actualDelay);
+
+      lastSrcRef.current = src;
       return () => clearTimeout(timer);
+    }
+
+    if (src) {
+      lastSrcRef.current = src;
     }
   }, [autoPlay, src, delay]);
 
@@ -74,7 +94,6 @@ export function AudioPlayer({
     } else {
       try {
         await audio.play();
-        setIsPlaying(true);
       } catch (err) {
         console.error("Failed to play audio:", err);
       }

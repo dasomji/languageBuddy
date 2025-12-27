@@ -41,6 +41,8 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
     id: storyId,
   });
 
+  const { data: settings } = api.settings.get.useQuery();
+
   const updateProgress = api.story.updateProgress.useMutation();
 
   const pages = story?.pages ?? [];
@@ -102,6 +104,10 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   const handleWordClick = (word: string) => {
     setSelectedWord(word);
   };
+
+  const handleAudioEnded = useCallback(() => {
+    setIsPlaying(false);
+  }, []);
 
   // Parse text into clickable words
   const renderTextWithClickableWords = (text: string) => {
@@ -225,8 +231,8 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
               <AudioPlayer
                 src={`/api/storage/presigned?key=${encodeURIComponent(currentPageData.audioKey)}&redirect=true`}
                 autoPlay={isPlaying}
-                delay={1000}
-                onEnded={() => setIsPlaying(false)}
+                delay={settings?.audioPlaybackDelay ?? 1000}
+                onEnded={handleAudioEnded}
               />
             </div>
           )}
