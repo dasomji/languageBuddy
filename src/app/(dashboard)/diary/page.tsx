@@ -21,7 +21,14 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Calendar, Loader2, CheckCircle, Clock, PenLine } from "lucide-react";
+import {
+  Calendar,
+  Loader2,
+  CheckCircle,
+  Clock,
+  PenLine,
+  RefreshCcw,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function DiaryPage() {
@@ -208,15 +215,36 @@ export default function DiaryPage() {
                   <p className="text-sm text-muted-foreground line-clamp-2">
                     {entry.rawText}
                   </p>
-                  {entry.story && (
+                  <div className="flex items-center gap-4 mt-2">
+                    {entry.story && (
+                      <Button
+                        variant="link"
+                        className="h-auto p-0 text-primary"
+                        onClick={() => router.push(`/stories/${entry.story?.id}`)}
+                      >
+                        Read story: {entry.story?.title}
+                      </Button>
+                    )}
                     <Button
-                      variant="link"
-                      className="h-auto p-0 text-primary"
-                      onClick={() => router.push(`/stories/${entry.story?.id}`)}
+                      variant="ghost"
+                      size="sm"
+                      className="ml-auto flex items-center gap-2 h-8 px-2 text-muted-foreground hover:text-primary"
+                      onClick={() =>
+                        processEntry.mutate({ diaryEntryId: entry.id })
+                      }
+                      disabled={processEntry.isPending}
                     >
-                      Read story: {entry.story?.title}
+                      {processEntry.isPending &&
+                      processEntry.variables?.diaryEntryId === entry.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCcw className="h-3 w-3" />
+                      )}
+                      <span className="text-xs font-medium">
+                        {entry.processed ? "Rerun AI" : "Process Entry"}
+                      </span>
                     </Button>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>

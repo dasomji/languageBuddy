@@ -10,7 +10,7 @@ const openrouter = new OpenAI({
   },
 });
 
-export const LLM_MODEL = "minimax/minimax-m2.1";
+export const LLM_MODEL = "google/gemini-3-flash-preview";
 
 export async function generateStructuredJSON<T>(
   prompt: string,

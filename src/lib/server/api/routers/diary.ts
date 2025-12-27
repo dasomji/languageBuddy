@@ -122,7 +122,23 @@ export const diaryRouter = createTRPCRouter({
 
       if (!entry) throw new Error("Diary entry not found");
       if (entry.userId !== ctx.session.user.id) throw new Error("Unauthorized");
-      if (entry.processed) throw new Error("Entry already processed");
+
+      // If already processed, clean up existing story and pages
+      if (entry.processed) {
+        const existingStory = await ctx.db.query.miniStories.findFirst({
+          where: eq(miniStories.diaryEntryId, entry.id),
+        });
+        if (existingStory) {
+          await ctx.db
+            .delete(miniStories)
+            .where(eq(miniStories.id, existingStory.id));
+        }
+        // Mark as unprocessed while we rerun the pipeline
+        await ctx.db
+          .update(diaryEntries)
+          .set({ processed: false })
+          .where(eq(diaryEntries.id, entry.id));
+      }
 
       const settings = await ctx.db.query.userSettings.findFirst({
         where: eq(userSettings.userId, ctx.session.user.id),

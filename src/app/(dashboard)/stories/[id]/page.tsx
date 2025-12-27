@@ -223,7 +223,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
           {currentPageData?.audioKey && (
             <div className="border-t pt-4">
               <AudioPlayer
-                src={`/api/storage/presigned?key=${encodeURIComponent(currentPageData.audioKey)}`}
+                src={`/api/storage/presigned?key=${encodeURIComponent(currentPageData.audioKey)}&redirect=true`}
                 autoPlay={isPlaying}
                 delay={1000}
                 onEnded={() => setIsPlaying(false)}

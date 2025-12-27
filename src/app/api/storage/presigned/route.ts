@@ -20,6 +20,13 @@ export async function GET(request: NextRequest) {
 
   try {
     const url = await getReadPresignedUrl(key);
+    
+    // If the request prefers a redirect (e.g. for <audio> or <img> tags), redirect to the presigned URL
+    const redirect = searchParams.get("redirect") === "true";
+    if (redirect) {
+      return NextResponse.redirect(url);
+    }
+
     return NextResponse.json({ url });
   } catch (error) {
     console.error("Error generating presigned URL:", error);

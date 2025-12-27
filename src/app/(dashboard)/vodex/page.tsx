@@ -19,6 +19,7 @@ import {
 } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { PresignedImage } from "~/components/ui/presigned-image";
+import { AudioPlayer } from "~/components/ui/audio-player";
 import { VocabCard } from "~/components/vodex/vocab-card";
 import {
   Dialog,
@@ -47,6 +48,8 @@ export default function VodexPage() {
   const [sexFilter, setSexFilter] = useState<string>("all");
   const [selectedVocab, setSelectedVocab] = useState<VocabEntry | null>(null);
 
+  const [activeAudio, setActiveAudio] = useState<string | null>(null);
+
   const { data: stats } = api.vodex.getStats.useQuery();
   const { data: vocabData, isLoading } = api.vodex.getAll.useQuery({
     search: search || undefined,
@@ -55,7 +58,7 @@ export default function VodexPage() {
   });
 
   const handlePlayAudio = (audioKey: string) => {
-    console.log("Play audio:", audioKey);
+    setActiveAudio(`/api/storage/presigned?key=${encodeURIComponent(audioKey)}&redirect=true`);
   };
 
   const wordKindColors: Record<string, string> = {
@@ -211,6 +214,17 @@ export default function VodexPage() {
               onClick={() => setSelectedVocab(vocab as VocabEntry)}
             />
           ))}
+        </div>
+      )}
+
+      {/* Hidden Audio Player for VoDex */}
+      {activeAudio && (
+        <div className="hidden">
+          <AudioPlayer
+            src={activeAudio}
+            autoPlay={true}
+            onEnded={() => setActiveAudio(null)}
+          />
         </div>
       )}
 
