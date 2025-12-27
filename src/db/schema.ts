@@ -37,6 +37,12 @@ export const miniStories = pgTable("mini_stories", {
     onDelete: "set null",
   }),
   title: text("title").notNull(),
+  fullTextTarget: text("full_text_target").notNull(),
+  fullTextNative: text("full_text_native").notNull(),
+  coverImageKey: text("cover_image_key"),
+  languageLevel: text("language_level").notNull(),
+  originalDiaryText: text("original_diary_text"),
+  fullTranslation: text("full_translation"),
   readCount: integer("read_count").notNull().default(0),
   openCount: integer("open_count").notNull().default(0),
   lastOpenedAt: timestamp("last_opened_at"),
@@ -50,7 +56,8 @@ export const miniStoryPages = pgTable("mini_story_pages", {
     .notNull()
     .references(() => miniStories.id, { onDelete: "cascade" }),
   pageNumber: integer("page_number").notNull(),
-  text: text("text").notNull(),
+  textTarget: text("text_target").notNull(),
+  textNative: text("text_native").notNull(),
   imageKey: text("image_key"),
   audioKey: text("audio_key"),
 });
@@ -58,6 +65,7 @@ export const miniStoryPages = pgTable("mini_story_pages", {
 export const vocabularies = pgTable("vocabularies", {
   id: uuid("id").primaryKey().defaultRandom(),
   word: text("word").notNull(),
+  lemma: text("lemma").notNull(),
   translation: text("translation").notNull(),
   definition: text("definition"),
   wordKind: text("word_kind").notNull(), // noun, verb, adjective, etc.
@@ -100,6 +108,9 @@ export const userSettings = pgTable("user_settings", {
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
   audioPlaybackDelay: integer("audio_playback_delay").notNull().default(1000), // in ms, default 1s
+  imageStyle: text("image_style")
+    .notNull()
+    .default("children book watercolors"),
 });
 
 export const learningSpaces = pgTable("learning_spaces", {

@@ -50,4 +50,46 @@ export async function getWritePresignedUrl(
   return await getSignedUrl(s3Client, command, { expiresIn });
 }
 
+/**
+ * Uploads a buffer directly to S3.
+ * @param key The object key in the bucket.
+ * @param buffer The file content.
+ * @param contentType The MIME type of the file.
+ */
+export async function uploadFromBuffer(
+  key: string,
+  buffer: Buffer,
+  contentType: string,
+) {
+  const command = new PutObjectCommand({
+    Bucket: env.S3_BUCKET_NAME,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType,
+  });
 
+  await s3Client.send(command);
+  return key;
+}
+
+/**
+ * Downloads a file from a URL and uploads it to S3.
+ * @param key The object key in the bucket.
+ * @param url The source URL.
+ * @param contentType The MIME type of the file.
+ */
+export async function uploadFromUrl(
+  key: string,
+  url: string,
+  contentType: string,
+) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file from URL: ${url}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  return await uploadFromBuffer(key, buffer, contentType);
+}

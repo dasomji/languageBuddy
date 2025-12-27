@@ -15,6 +15,13 @@
       "when": 1766697159026,
       "tag": "0001_daffy_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766838684161,
+      "tag": "0002_third_mephistopheles",
+      "breakpoints": true
     }
   ]
 }

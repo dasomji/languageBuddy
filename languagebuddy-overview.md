@@ -26,11 +26,6 @@ For AI-features:
 I have already installed all the above packages and have an .env with the api-keys for everything that I have described in the .env.example
 
 
-I give you what I’ve thought of so far. I need your help in
-a) work out a plan how to build this. You are a professional product manager and you write linear-tickets so that I can assign agents later to build the tasks. Use labels for the differrent features.
-Writing and optimising the prompts should also be a ticket since the quality of these is important for the usability of our application.
-
-
 Application-Flow
 1. Prompt user for diary-input
 2. Process that diary entry into
@@ -49,6 +44,7 @@ The user sees always one „page“ at a time.
 The user can swipe left and swipe right to go to the next/last page. We use a transition-animation that resembles turning a real book page.
 Going to the next page automatically starts the audio-playback with a delay that can be set in the user-settings. Default is 1 second.
 There is a play button inline before the text that allows the user to replay the audio.
+The user can click on the any word in the text, which brings up the VoDex-entry of this word.
 
 The last page of the mini-story has information about how often he has read the book and two buttons:
 - Read again, which brings the user to the first page.
@@ -106,12 +102,14 @@ I want to learn french with my own diary. I’ll give you a diary entry and you 
 Ministory prompt:
 I want to turn the following into a childrenbook-like story.
 We need to break this down into blocks, where each block is made up of max 2 sentences so that it fits well on one page of a children book.
-Each block also has an image that visualizes what’s happening. Create an image prompt for each block. Important: The image needs a background in {color-code} so that the image can be embedded well into a website. Also take the context of the whole story into account when creating the image-prompts so that we have consistency in the images.
+Each block also has an image that visualizes what’s happening. Create an image prompt for each block. Important: The image needs a white background so that the image can be embedded well into a website. Also take the context of the whole story into account when creating the image-prompts so that we have consistency in the images.
 Please provide a structured json-output with :
 [
-{1:{
-„text“:“{text-output}“,
-„image-prompt“:“<image prompt>“
+{
+„text_target_language“:“{text-output}“,
+„text_native_language“:“{text-output-in-native-language}“,
+„page“: {page-number}
+„image_prompt“:“<image prompt>“
 },
 2:{
 „text“:“{text-output}“,
@@ -121,12 +119,13 @@ Please provide a structured json-output with :
 „text“:“{text-output}“,
 „image-prompt“:“<image prompt>“
 }
-}
 ]
 
 Extract vocabs prompt:
 I am learning a language by using my own dictionary entries as the content of what I’m learning. I’m learning {target language} I provide you with an already translated text. Please extract the vocabularies from this text and return them as structured json-output. We need for each vocab:
 - vocabulary
+- translation in native language
+- Lemma of the word
 - simple example sentence based on my dictionary entry. This should be a stripped down, short sentence with the main focus on this one vocabulary.
 - sex (masculine, feminine, etc. - if this word doesnt have a sex, return none)
 - image-prompt that can be used for image generation with {image-model}. We use mnemonic cues in our images. Masculine words are fire-themed, feminine-words are ice-themed. The image needs a background in {color-code} so that the image can be embedded well into a website.
@@ -139,6 +138,8 @@ structure:
 {
 vocab, example-sentence, word-kind , sex
 }
+
+The returned json should be compared against our database of vocabularies. If the word is already in the database, we don't save it to the database. In order to make sure that we don't get duplicates due to different word-forms, we use the Lemma of the word for comparison. We might need to update our database schema.
 
 Ideas for Levels:
 - an absolute beginner in {target language}. 
