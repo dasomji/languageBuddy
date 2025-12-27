@@ -21,6 +21,10 @@ export const diaryEntries = pgTable("diary_entries", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  learningSpaceId: uuid("learning_space_id").references(
+    () => learningSpaces.id,
+    { onDelete: "cascade" },
+  ),
   rawText: text("raw_text").notNull(),
   targetLanguage: text("target_language").notNull(),
   level: text("level").notNull(), // beginner, A1, A2
@@ -33,6 +37,10 @@ export const miniStories = pgTable("mini_stories", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  learningSpaceId: uuid("learning_space_id").references(
+    () => learningSpaces.id,
+    { onDelete: "cascade" },
+  ),
   diaryEntryId: uuid("diary_entry_id").references(() => diaryEntries.id, {
     onDelete: "set null",
   }),
@@ -64,6 +72,10 @@ export const miniStoryPages = pgTable("mini_story_pages", {
 
 export const vocabularies = pgTable("vocabularies", {
   id: uuid("id").primaryKey().defaultRandom(),
+  learningSpaceId: uuid("learning_space_id").references(
+    () => learningSpaces.id,
+    { onDelete: "cascade" },
+  ),
   word: text("word").notNull(),
   lemma: text("lemma").notNull(),
   translation: text("translation").notNull(),
@@ -86,6 +98,10 @@ export const userVocabProgress = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    learningSpaceId: uuid("learning_space_id").references(
+      () => learningSpaces.id,
+      { onDelete: "cascade" },
+    ),
     vocabId: uuid("vocab_id")
       .notNull()
       .references(() => vocabularies.id, { onDelete: "cascade" }),
@@ -99,7 +115,9 @@ export const userVocabProgress = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.userId, table.vocabId] }),
+    pk: primaryKey({
+      columns: [table.userId, table.learningSpaceId, table.vocabId],
+    }),
   }),
 );
 
@@ -111,6 +129,10 @@ export const userSettings = pgTable("user_settings", {
   imageStyle: text("image_style")
     .notNull()
     .default("children book watercolors"),
+  activeLearningSpaceId: uuid("active_learning_space_id").references(
+    () => learningSpaces.id,
+    { onDelete: "set null" },
+  ),
 });
 
 export const learningSpaces = pgTable("learning_spaces", {
@@ -118,6 +140,9 @@ export const learningSpaces = pgTable("learning_spaces", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
   targetLanguage: text("target_language").notNull(),
   nativeLanguage: text("native_language").notNull(),
+  level: text("level").notNull(), // beginner, A1, A2, etc.
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });

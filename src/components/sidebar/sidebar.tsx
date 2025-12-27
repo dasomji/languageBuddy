@@ -14,6 +14,7 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
 } from "~/components/ui/sidebar";
+import { LearningSpaceSwitcher } from "./learning-space-switcher";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Grid },
@@ -28,10 +29,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="h-16 border-b flex items-center px-6">
+      <SidebarHeader className="border-b flex flex-col gap-4 p-4">
         <Link href="/" className="flex items-center gap-2">
           <h1 className="text-xl font-bold">LanguageBuddy</h1>
         </Link>
+        <LearningSpaceSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

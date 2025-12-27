@@ -14,17 +14,32 @@ import { Badge } from "~/components/ui/badge";
 import { PresignedImage } from "~/components/ui/presigned-image";
 import { Loader2, BookOpen, Eye, Clock, RefreshCcw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { NoActiveSpace } from "~/components/learning-space/no-active-space";
 
 export default function StoriesPage() {
-  const { data: storiesData, isLoading } = api.story.getAll.useQuery({});
-  const { data: stats } = api.story.getStats.useQuery();
+  const { data: activeSpace, isLoading: isLoadingSpace } =
+    api.learningSpace.getActive.useQuery();
 
-  if (isLoading) {
+  const { data: storiesData, isLoading } = api.story.getAll.useQuery(
+    {},
+    {
+      enabled: !!activeSpace,
+    },
+  );
+  const { data: stats } = api.story.getStats.useQuery(undefined, {
+    enabled: !!activeSpace,
+  });
+
+  if (isLoading || isLoadingSpace) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
+  }
+
+  if (!activeSpace) {
+    return <NoActiveSpace />;
   }
 
   return (

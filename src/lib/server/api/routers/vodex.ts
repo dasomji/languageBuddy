@@ -1,28 +1,46 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment */
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/lib/server/api/trpc";
-import { vocabularies, userVocabProgress } from "~/db/schema";
+import { vocabularies, userVocabProgress, userSettings } from "~/db/schema";
 import { eq, desc, and, like, or, sql, inArray } from "drizzle-orm";
 
 export const vodexRouter = createTRPCRouter({
   getAll: protectedProcedure
     .input(
-      z.object({
-        limit: z.number().min(1).max(100).default(20),
-        cursor: z.string().optional(),
-        search: z.string().optional(),
-        wordKind: z.string().optional(),
-        sex: z.string().optional(),
-      }).optional()
+      z
+        .object({
+          limit: z.number().min(1).max(100).default(20),
+          cursor: z.string().optional(),
+          search: z.string().optional(),
+          wordKind: z.string().optional(),
+          sex: z.string().optional(),
+        })
+        .optional(),
     )
     .query(async ({ ctx, input }) => {
       const limit = input?.limit ?? 20;
 
-      // Get user's vocabulary IDs first
+      // Get active space
+      const settings = await ctx.db.query.userSettings.findFirst({
+        where: eq(userSettings.userId, ctx.session.user.id),
+      });
+
+      if (!settings?.activeLearningSpaceId) {
+        return { vocabularies: [], nextCursor: undefined };
+      }
+
+      // Get user's vocabulary IDs first for the active space
       const userVocabProgressRecords = await ctx.db
         .select({ vocabId: userVocabProgress.vocabId })
         .from(userVocabProgress)
-        .where(eq(userVocabProgress.userId, ctx.session.user.id));
+        .where(
+          and(
+            eq(userVocabProgress.userId, ctx.session.user.id),
+            eq(
+              userVocabProgress.learningSpaceId,
+              settings.activeLearningSpaceId,
+            ),
+          ),
+        );
 
       const vocabIds = userVocabProgressRecords.map((r) => r.vocabId);
 
@@ -38,8 +56,8 @@ export const vodexRouter = createTRPCRouter({
           or(
             like(vocabularies.word, `%${input.search}%`),
             like(vocabularies.translation, `%${input.search}%`),
-            like(vocabularies.lemma, `%${input.search}%`)
-          )
+            like(vocabularies.lemma, `%${input.search}%`),
+          ),
         );
       }
 
@@ -52,7 +70,10 @@ export const vodexRouter = createTRPCRouter({
       }
 
       const vocabulariesList = await ctx.db.query.vocabularies.findMany({
-        where: vocabConditions.length > 1 ? and(...vocabConditions) : vocabConditions[0],
+        where:
+          vocabConditions.length > 1
+            ? and(...vocabConditions)
+            : vocabConditions[0],
         orderBy: [desc(vocabularies.createdAt)],
         limit: limit + 1,
       });
@@ -72,32 +93,70 @@ export const vodexRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
+      // Get active space
+      const settings = await ctx.db.query.userSettings.findFirst({
+        where: eq(userSettings.userId, ctx.session.user.id),
+      });
+
+      if (!settings?.activeLearningSpaceId) {
+        throw new Error("No active learning space found");
+      }
+
       const vocab = await ctx.db.query.vocabularies.findFirst({
-        where: eq(vocabularies.id, input.id),
-        with: {
-          userVocabProgresses: {
-            where: eq(userVocabProgress.userId, ctx.session.user.id),
-          },
-        },
+        where: and(
+          eq(vocabularies.id, input.id),
+          eq(vocabularies.learningSpaceId, settings.activeLearningSpaceId),
+        ),
       });
 
       if (!vocab) {
         throw new Error("Vocabulary entry not found");
       }
 
-      return vocab;
+      const progress = await ctx.db.query.userVocabProgress.findFirst({
+        where: and(
+          eq(userVocabProgress.userId, ctx.session.user.id),
+          eq(userVocabProgress.vocabId, vocab.id),
+          eq(userVocabProgress.learningSpaceId, settings.activeLearningSpaceId),
+        ),
+      });
+
+      return { ...vocab, progress };
     }),
 
   getStats: protectedProcedure.query(async ({ ctx }) => {
+    // Get active space
+    const settings = await ctx.db.query.userSettings.findFirst({
+      where: eq(userSettings.userId, ctx.session.user.id),
+    });
+
+    if (!settings?.activeLearningSpaceId) {
+      return {
+        totalWords: 0,
+        totalXp: 0,
+        wordKindDistribution: [],
+      };
+    }
+
     const totalWords = await ctx.db
       .select({ count: sql<number>`count(*)` })
       .from(userVocabProgress)
-      .where(eq(userVocabProgress.userId, ctx.session.user.id));
+      .where(
+        and(
+          eq(userVocabProgress.userId, ctx.session.user.id),
+          eq(userVocabProgress.learningSpaceId, settings.activeLearningSpaceId),
+        ),
+      );
 
     const totalXp = await ctx.db
       .select({ xp: sql<number>`coalesce(sum(${userVocabProgress.xp}), 0)` })
       .from(userVocabProgress)
-      .where(eq(userVocabProgress.userId, ctx.session.user.id));
+      .where(
+        and(
+          eq(userVocabProgress.userId, ctx.session.user.id),
+          eq(userVocabProgress.learningSpaceId, settings.activeLearningSpaceId),
+        ),
+      );
 
     const wordKinds = await ctx.db
       .select({
@@ -109,8 +168,9 @@ export const vodexRouter = createTRPCRouter({
         userVocabProgress,
         and(
           eq(userVocabProgress.vocabId, vocabularies.id),
-          eq(userVocabProgress.userId, ctx.session.user.id)
-        )
+          eq(userVocabProgress.userId, ctx.session.user.id),
+          eq(userVocabProgress.learningSpaceId, settings.activeLearningSpaceId),
+        ),
       )
       .groupBy(vocabularies.wordKind);
 

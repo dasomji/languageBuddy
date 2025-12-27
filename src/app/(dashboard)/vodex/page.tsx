@@ -21,6 +21,7 @@ import { Badge } from "~/components/ui/badge";
 import { PresignedImage } from "~/components/ui/presigned-image";
 import { AudioPlayer } from "~/components/ui/audio-player";
 import { VocabCard } from "~/components/vodex/vocab-card";
+import { NoActiveSpace } from "~/components/learning-space/no-active-space";
 import {
   Dialog,
   DialogContent,
@@ -50,15 +51,27 @@ export default function VodexPage() {
 
   const [activeAudio, setActiveAudio] = useState<string | null>(null);
 
-  const { data: stats } = api.vodex.getStats.useQuery();
-  const { data: vocabData, isLoading } = api.vodex.getAll.useQuery({
-    search: search || undefined,
-    wordKind: wordKindFilter !== "all" ? wordKindFilter : undefined,
-    sex: sexFilter !== "all" ? sexFilter : undefined,
+  const { data: activeSpace, isLoading: isLoadingSpace } =
+    api.learningSpace.getActive.useQuery();
+
+  const { data: stats } = api.vodex.getStats.useQuery(undefined, {
+    enabled: !!activeSpace,
   });
+  const { data: vocabData, isLoading } = api.vodex.getAll.useQuery(
+    {
+      search: search || undefined,
+      wordKind: wordKindFilter !== "all" ? wordKindFilter : undefined,
+      sex: sexFilter !== "all" ? sexFilter : undefined,
+    },
+    {
+      enabled: !!activeSpace,
+    },
+  );
 
   const handlePlayAudio = (audioKey: string) => {
-    setActiveAudio(`/api/storage/presigned?key=${encodeURIComponent(audioKey)}&redirect=true`);
+    setActiveAudio(
+      `/api/storage/presigned?key=${encodeURIComponent(audioKey)}&redirect=true`,
+    );
   };
 
   const wordKindColors: Record<string, string> = {
@@ -67,6 +80,18 @@ export default function VodexPage() {
     adjective: "bg-green-100 text-green-800",
     adverb: "bg-yellow-100 text-yellow-800",
   };
+
+  if (isLoadingSpace) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!activeSpace) {
+    return <NoActiveSpace />;
+  }
 
   return (
     <div className="space-y-8">

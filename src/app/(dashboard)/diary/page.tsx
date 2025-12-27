@@ -28,19 +28,24 @@ import {
   Clock,
   PenLine,
   RefreshCcw,
+  Globe,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+
+import { NoActiveSpace } from "~/components/learning-space/no-active-space";
 
 export default function DiaryPage() {
   const router = useRouter();
   const [rawText, setRawText] = useState("");
-  const [targetLanguage, setTargetLanguage] = useState("French");
-  const [level, setLevel] = useState<"beginner" | "A1" | "A2">("A1");
 
+  const { data: activeSpace, isLoading: isLoadingSpace } =
+    api.learningSpace.getActive.useQuery();
+
+  const utils = api.useUtils();
   const createEntry = api.diary.createEntry.useMutation({
     onSuccess: ({ entryId }) => {
       setRawText("");
-      router.refresh();
+      utils.diary.getEntries.invalidate();
       // Trigger AI processing
       processEntry.mutate({ diaryEntryId: entryId });
     },
@@ -51,7 +56,7 @@ export default function DiaryPage() {
 
   const processEntry = api.diary.processEntry.useMutation({
     onSuccess: () => {
-      router.refresh();
+      utils.diary.getEntries.invalidate();
     },
     onError: (error) => {
       console.error("Failed to process entry:", error);
@@ -63,14 +68,24 @@ export default function DiaryPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rawText.trim()) return;
+    if (!rawText.trim() || !activeSpace) return;
 
     createEntry.mutate({
       rawText,
-      targetLanguage,
-      level,
     });
   };
+
+  if (isLoadingSpace) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!activeSpace) {
+    return <NoActiveSpace />;
+  }
 
   return (
     <div className="space-y-8">
@@ -79,7 +94,11 @@ export default function DiaryPage() {
         <h1 className="text-3xl font-bold tracking-tight">Daily Diary</h1>
         <p className="text-muted-foreground">
           Write about your day in your native language. We&apos;ll turn it into
-          personalized learning content.
+          personalized learning content for your{" "}
+          <span className="font-semibold text-foreground">
+            {activeSpace.targetLanguage} ({activeSpace.level})
+          </span>{" "}
+          journey.
         </p>
       </div>
 
@@ -91,53 +110,11 @@ export default function DiaryPage() {
             New Entry
           </CardTitle>
           <CardDescription>
-            Write freely in your native language. Don&apos;t worry about using the
-            target language yet.
+            Writing for <strong>{activeSpace.name}</strong> ({activeSpace.targetLanguage} {activeSpace.level})
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="targetLanguage">Target Language</Label>
-                <Select
-                  value={targetLanguage}
-                  onValueChange={setTargetLanguage}
-                >
-                  <SelectTrigger id="targetLanguage">
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="French">French</SelectItem>
-                    <SelectItem value="Spanish">Spanish</SelectItem>
-                    <SelectItem value="German">German</SelectItem>
-                    <SelectItem value="Italian">Italian</SelectItem>
-                    <SelectItem value="Portuguese">Portuguese</SelectItem>
-                    <SelectItem value="Japanese">Japanese</SelectItem>
-                    <SelectItem value="Chinese">Chinese</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="level">Learning Level</Label>
-                <Select
-                  value={level}
-                  onValueChange={(value) =>
-                    setLevel(value as "beginner" | "A1" | "A2")
-                  }
-                >
-                  <SelectTrigger id="level">
-                    <SelectValue placeholder="Select level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="beginner">Complete Beginner</SelectItem>
-                    <SelectItem value="A1">A1 - Beginner</SelectItem>
-                    <SelectItem value="A2">A2 - Elementary</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="diaryEntry">Your Diary Entry</Label>
               <Textarea
@@ -151,7 +128,7 @@ export default function DiaryPage() {
 
             <Button
               type="submit"
-              disabled={!rawText.trim() || createEntry.isPending}
+              disabled={!rawText.trim() || createEntry.isPending || !activeSpace}
             >
               {createEntry.isPending ? (
                 <>

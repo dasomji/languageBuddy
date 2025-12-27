@@ -7,20 +7,37 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Slider } from "~/components/ui/slider";
+import { Badge } from "~/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Globe, Trash2 } from "lucide-react";
 
 export default function SettingsPage() {
   const [audioDelay, setAudioDelay] = useState(1000);
   const [imageStyle, setImageStyle] = useState("children book watercolors");
 
+  const utils = api.useUtils();
   const { data: settings, isLoading } = api.settings.get.useQuery();
+  const { data: spaces } = api.learningSpace.list.useQuery();
+  const { data: activeSpace } = api.learningSpace.getActive.useQuery();
+
   const updateSettings = api.settings.update.useMutation({
     onSuccess: () => {
       toast.success("Settings updated successfully");
+      utils.settings.get.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to update settings");
+    },
+  });
+
+  const deleteSpaceMutation = api.learningSpace.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Learning space deleted");
+      utils.learningSpace.list.invalidate();
+      utils.learningSpace.getActive.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete space");
     },
   });
 
@@ -36,6 +53,16 @@ export default function SettingsPage() {
       audioPlaybackDelay: audioDelay,
       imageStyle,
     });
+  };
+
+  const handleDeleteSpace = (id: string, name: string) => {
+    if (
+      confirm(
+        `Are you sure you want to delete "${name}"? This will permanently delete all diary entries, stories, and vocabulary linked to this space.`,
+      )
+    ) {
+      deleteSpaceMutation.mutate({ id });
+    }
   };
 
   if (isLoading) {
@@ -56,6 +83,62 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Learning Spaces</CardTitle>
+            <CardDescription>
+              Manage your different language learning spaces.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {spaces?.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No learning spaces created yet.
+                </p>
+              ) : (
+                <div className="grid gap-4">
+                  {spaces?.map((space) => (
+                    <div
+                      key={space.id}
+                      className="flex items-center justify-between rounded-lg border p-4"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="rounded-full bg-muted p-2">
+                          <Globe className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            {space.name}
+                            {activeSpace?.id === space.id && (
+                              <Badge className="ml-2" variant="secondary">
+                                Active
+                              </Badge>
+                            )}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {space.targetLanguage} ({space.level}) • Native:{" "}
+                            {space.nativeLanguage}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteSpace(space.id, space.name)}
+                        disabled={deleteSpaceMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Mini-Story Preferences</CardTitle>
@@ -98,10 +181,7 @@ export default function SettingsPage() {
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4">
-            <Button 
-              onClick={handleSave} 
-              disabled={updateSettings.isPending}
-            >
+            <Button onClick={handleSave} disabled={updateSettings.isPending}>
               {updateSettings.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}

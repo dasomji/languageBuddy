@@ -7,6 +7,7 @@ import {
   vocabularies,
   userVocabProgress,
   userSettings,
+  learningSpaces,
 } from "~/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { processDiaryWithAI } from "~/lib/server/ai/prompts";
@@ -19,19 +20,40 @@ export const diaryRouter = createTRPCRouter({
     .input(
       z.object({
         rawText: z.string().min(1, "Diary entry cannot be empty"),
-        targetLanguage: z.string().min(1, "Target language is required"),
-        level: z.enum(["beginner", "A1", "A2"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Get active learning space
+      const settings = await ctx.db.query.userSettings.findFirst({
+        where: eq(userSettings.userId, ctx.session.user.id),
+      });
+
+      if (!settings?.activeLearningSpaceId) {
+        throw new Error(
+          "No active learning space found. Please create or select one.",
+        );
+      }
+
+      const space = await ctx.db.query.learningSpaces.findFirst({
+        where: and(
+          eq(learningSpaces.id, settings.activeLearningSpaceId),
+          eq(learningSpaces.userId, ctx.session.user.id),
+        ),
+      });
+
+      if (!space) {
+        throw new Error("Active learning space not found.");
+      }
+
       // Create the diary entry
       const [entry] = await ctx.db
         .insert(diaryEntries)
         .values({
           userId: ctx.session.user.id,
+          learningSpaceId: space.id,
           rawText: input.rawText,
-          targetLanguage: input.targetLanguage,
-          level: input.level,
+          targetLanguage: space.targetLanguage,
+          level: space.level,
           processed: false,
         })
         .returning();
@@ -59,13 +81,26 @@ export const diaryRouter = createTRPCRouter({
       const limit = input?.limit ?? 20;
       const cursor = input?.cursor;
 
+      // Get active space
+      const settings = await ctx.db.query.userSettings.findFirst({
+        where: eq(userSettings.userId, ctx.session.user.id),
+      });
+
+      if (!settings?.activeLearningSpaceId) {
+        return { entries: [], nextCursor: undefined };
+      }
+
       const entries = await ctx.db.query.diaryEntries.findMany({
         where: cursor
           ? and(
               eq(diaryEntries.userId, ctx.session.user.id),
+              eq(diaryEntries.learningSpaceId, settings.activeLearningSpaceId),
               eq(diaryEntries.processed, true),
             )
-          : eq(diaryEntries.userId, ctx.session.user.id),
+          : and(
+              eq(diaryEntries.userId, ctx.session.user.id),
+              eq(diaryEntries.learningSpaceId, settings.activeLearningSpaceId),
+            ),
         orderBy: [desc(diaryEntries.createdAt)],
         limit: limit + 1,
       });
@@ -174,6 +209,7 @@ export const diaryRouter = createTRPCRouter({
         .values({
           id: storyId,
           userId: ctx.session.user.id,
+          learningSpaceId: entry.learningSpaceId,
           diaryEntryId: entry.id,
           title: aiResult.miniStory.title,
           fullTextTarget: aiResult.miniStory.textTargetLanguage,
@@ -221,9 +257,12 @@ export const diaryRouter = createTRPCRouter({
 
       // 5. Process Vocabularies
       for (const vocabData of aiResult.vocabularies) {
-        // Check if vocab already exists by lemma
+        // Check if vocab already exists by lemma within the same learning space
         let vocab = await ctx.db.query.vocabularies.findFirst({
-          where: eq(vocabularies.lemma, vocabData.lemma),
+          where: and(
+            eq(vocabularies.lemma, vocabData.lemma),
+            eq(vocabularies.learningSpaceId, entry.learningSpaceId!),
+          ),
         });
 
         if (!vocab) {
@@ -245,6 +284,7 @@ export const diaryRouter = createTRPCRouter({
               .insert(vocabularies)
               .values({
                 id: vocabId,
+                learningSpaceId: entry.learningSpaceId,
                 word: vocabData.word,
                 lemma: vocabData.lemma,
                 translation: vocabData.translation,
@@ -262,11 +302,12 @@ export const diaryRouter = createTRPCRouter({
         }
 
         if (vocab) {
-          // Link to user progress
+          // Link to user progress within the space
           await ctx.db
             .insert(userVocabProgress)
             .values({
               userId: ctx.session.user.id,
+              learningSpaceId: entry.learningSpaceId!,
               vocabId: vocab.id,
             })
             .onConflictDoNothing();

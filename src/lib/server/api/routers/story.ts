@@ -1,22 +1,41 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/lib/server/api/trpc";
-import { miniStories, miniStoryPages } from "~/db/schema";
+import {
+  miniStories,
+  miniStoryPages,
+  userSettings,
+  learningSpaces,
+} from "~/db/schema";
 import { eq, desc, and, asc } from "drizzle-orm";
 
 export const storyRouter = createTRPCRouter({
   getAll: protectedProcedure
     .input(
-      z.object({
-        limit: z.number().min(1).max(100).default(20),
-        cursor: z.string().optional(),
-      }).optional()
+      z
+        .object({
+          limit: z.number().min(1).max(100).default(20),
+          cursor: z.string().optional(),
+        })
+        .optional(),
     )
     .query(async ({ ctx, input }) => {
       const limit = input?.limit ?? 20;
       const cursor = input?.cursor;
 
+      // Get active space
+      const settings = await ctx.db.query.userSettings.findFirst({
+        where: eq(userSettings.userId, ctx.session.user.id),
+      });
+
+      if (!settings?.activeLearningSpaceId) {
+        return { stories: [], nextCursor: undefined };
+      }
+
       const stories = await ctx.db.query.miniStories.findMany({
-        where: eq(miniStories.userId, ctx.session.user.id),
+        where: and(
+          eq(miniStories.userId, ctx.session.user.id),
+          eq(miniStories.learningSpaceId, settings.activeLearningSpaceId),
+        ),
         orderBy: [desc(miniStories.createdAt)],
         limit: limit + 1,
       });
@@ -99,8 +118,25 @@ export const storyRouter = createTRPCRouter({
     }),
 
   getStats: protectedProcedure.query(async ({ ctx }) => {
+    // Get active space
+    const settings = await ctx.db.query.userSettings.findFirst({
+      where: eq(userSettings.userId, ctx.session.user.id),
+    });
+
+    if (!settings?.activeLearningSpaceId) {
+      return {
+        totalStories: 0,
+        totalReads: 0,
+        totalOpens: 0,
+        completedStories: 0,
+      };
+    }
+
     const stories = await ctx.db.query.miniStories.findMany({
-      where: eq(miniStories.userId, ctx.session.user.id),
+      where: and(
+        eq(miniStories.userId, ctx.session.user.id),
+        eq(miniStories.learningSpaceId, settings.activeLearningSpaceId),
+      ),
     });
 
     const totalReads = stories.reduce((sum, s) => sum + (s.readCount ?? 0), 0);
