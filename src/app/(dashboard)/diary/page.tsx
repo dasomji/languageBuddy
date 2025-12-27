@@ -1,18 +1,10 @@
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import {
   Card,
   CardContent,
@@ -28,7 +20,8 @@ import {
   Clock,
   PenLine,
   RefreshCcw,
-  Globe,
+  BookOpen,
+  Languages,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -47,7 +40,7 @@ export default function DiaryPage() {
       setRawText("");
       utils.diary.getEntries.invalidate();
       // Trigger AI processing
-      processEntry.mutate({ diaryEntryId: entryId });
+      processEntry.mutate({ diaryEntryId: entryId, mode: "full" });
     },
     onError: (error) => {
       console.error("Failed to create entry:", error);
@@ -78,7 +71,7 @@ export default function DiaryPage() {
   if (isLoadingSpace) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -95,7 +88,7 @@ export default function DiaryPage() {
         <p className="text-muted-foreground">
           Write about your day in your native language. We&apos;ll turn it into
           personalized learning content for your{" "}
-          <span className="font-semibold text-foreground">
+          <span className="text-foreground font-semibold">
             {activeSpace.targetLanguage} ({activeSpace.level})
           </span>{" "}
           journey.
@@ -110,7 +103,8 @@ export default function DiaryPage() {
             New Entry
           </CardTitle>
           <CardDescription>
-            Writing for <strong>{activeSpace.name}</strong> ({activeSpace.targetLanguage} {activeSpace.level})
+            Writing for <strong>{activeSpace.name}</strong> (
+            {activeSpace.targetLanguage} {activeSpace.level})
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -128,7 +122,9 @@ export default function DiaryPage() {
 
             <Button
               type="submit"
-              disabled={!rawText.trim() || createEntry.isPending || !activeSpace}
+              disabled={
+                !rawText.trim() || createEntry.isPending || !activeSpace
+              }
             >
               {createEntry.isPending ? (
                 <>
@@ -157,10 +153,10 @@ export default function DiaryPage() {
         <CardContent>
           {isLoadingEntries ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
             </div>
           ) : entriesData?.entries.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+            <p className="text-muted-foreground py-8 text-center">
               No diary entries yet. Write your first entry above!
             </p>
           ) : (
@@ -177,50 +173,114 @@ export default function DiaryPage() {
                       ) : (
                         <Clock className="h-4 w-4 text-yellow-500" />
                       )}
-                      <Badge variant={entry.processed ? "default" : "secondary"}>
+                      <Badge
+                        variant={entry.processed ? "default" : "secondary"}
+                      >
                         {entry.processed ? "Processed" : "Processing"}
                       </Badge>
                       <Badge variant="outline">{entry.targetLanguage}</Badge>
                       <Badge variant="outline">{entry.level}</Badge>
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-muted-foreground text-xs">
                       {formatDistanceToNow(new Date(entry.createdAt), {
                         addSuffix: true,
                       })}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-muted-foreground line-clamp-2 text-sm">
                     {entry.rawText}
                   </p>
-                  <div className="flex items-center gap-4 mt-2">
-                    {entry.story && (
-                      <Button
-                        variant="link"
-                        className="h-auto p-0 text-primary"
-                        onClick={() => router.push(`/stories/${entry.story?.id}`)}
-                      >
-                        Read story: {entry.story?.title}
-                      </Button>
+                  <div className="mt-2 flex flex-col gap-3">
+                    {entry.stories && entry.stories.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {entry.stories.map((story, idx) => (
+                          <Button
+                            key={story.id}
+                            variant="link"
+                            className="text-primary flex h-auto items-center gap-1 p-0"
+                            onClick={() => router.push(`/stories/${story.id}`)}
+                          >
+                            <BookOpen className="h-3 w-3" />
+                            Story {entry.stories.length > 1
+                              ? idx + 1
+                              : ""}: {story.title}
+                          </Button>
+                        ))}
+                      </div>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-auto flex items-center gap-2 h-8 px-2 text-muted-foreground hover:text-primary"
-                      onClick={() =>
-                        processEntry.mutate({ diaryEntryId: entry.id })
-                      }
-                      disabled={processEntry.isPending}
-                    >
-                      {processEntry.isPending &&
-                      processEntry.variables?.diaryEntryId === entry.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <RefreshCcw className="h-3 w-3" />
-                      )}
-                      <span className="text-xs font-medium">
-                        {entry.processed ? "Rerun AI" : "Process Entry"}
-                      </span>
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2 border-t pt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-primary flex h-8 items-center gap-2 px-2"
+                        onClick={() =>
+                          processEntry.mutate({
+                            diaryEntryId: entry.id,
+                            mode: "full",
+                          })
+                        }
+                        disabled={processEntry.isPending}
+                      >
+                        {processEntry.isPending &&
+                        processEntry.variables?.diaryEntryId === entry.id &&
+                        processEntry.variables?.mode === "full" ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <RefreshCcw className="h-3 w-3" />
+                        )}
+                        <span className="text-xs font-medium">
+                          Full Pipeline
+                        </span>
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-primary flex h-8 items-center gap-2 px-2"
+                        onClick={() =>
+                          processEntry.mutate({
+                            diaryEntryId: entry.id,
+                            mode: "story",
+                          })
+                        }
+                        disabled={processEntry.isPending}
+                      >
+                        {processEntry.isPending &&
+                        processEntry.variables?.diaryEntryId === entry.id &&
+                        processEntry.variables?.mode === "story" ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <BookOpen className="h-3 w-3" />
+                        )}
+                        <span className="text-xs font-medium">
+                          New Story Only
+                        </span>
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-primary flex h-8 items-center gap-2 px-2"
+                        onClick={() =>
+                          processEntry.mutate({
+                            diaryEntryId: entry.id,
+                            mode: "vocab",
+                          })
+                        }
+                        disabled={processEntry.isPending}
+                      >
+                        {processEntry.isPending &&
+                        processEntry.variables?.diaryEntryId === entry.id &&
+                        processEntry.variables?.mode === "vocab" ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Languages className="h-3 w-3" />
+                        )}
+                        <span className="text-xs font-medium">
+                          Regen Vocab Only
+                        </span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -231,4 +291,3 @@ export default function DiaryPage() {
     </div>
   );
 }
-
