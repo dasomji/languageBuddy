@@ -1,80 +1,157 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
-
-import { LatestPost } from "~/app/_components/post";
 import { auth } from "~/lib/auth";
 import { api, HydrateClient } from "~/trpc/server";
-import SignInSignOutButton from "./_components/signin-signout-button";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Calendar, BookOpen, Library } from "lucide-react";
 
 export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
-  if (session?.user) {
-    void api.post.getLatest.prefetch();
+  if (!session?.user) {
+    redirect("/auth/signin");
   }
+
+  // Prefetch data for the dashboard
+  void api.diary.getEntries.prefetch();
+  void api.story.getAll.prefetch();
+  void api.vodex.getAll.prefetch({ limit: 5 });
 
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-linear-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
+      <div className="space-y-8">
+        {/* Welcome Section */}
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome back, {session.user.name}!
           </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/usage/first-steps"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">First Steps →</h3>
-              <div className="text-lg">
-                Just the basics - Everything you need to know to set up your
-                database and authentication.
-              </div>
-            </Link>
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/introduction"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">Documentation →</h3>
-              <div className="text-lg">
-                Learn more about Create T3 App, the libraries it uses, and how
-                to deploy it.
-              </div>
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
-            </p>
-
-            <div className="flex flex-col items-center justify-center gap-4">
-              <p className="text-center text-2xl text-white">
-                {session && <span>Logged in as {session.user?.name}</span>}
-              </p>
-              <SignInSignOutButton />
-            </div>
-          </div>
-          {session?.user && <LatestPost />}
-        </div>
-        <div className="flex flex-col items-center justify-center gap-4">
-          <p className="text-center text-2xl text-white">
-            {session && api.post.getSecretMessage()}
+          <p className="text-muted-foreground">
+            Continue your language learning journey
           </p>
         </div>
-        <div>
-          {session && (
-            <a href="/auth/delete">
-              <Button variant="destructive">Delete Account</Button>
-            </a>
-          )}
+
+        {/* Quick Stats */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Diary Entries</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">--</div>
+              <p className="text-xs text-muted-foreground">
+                entries written
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Stories Read</CardTitle>
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">--</div>
+              <p className="text-xs text-muted-foreground">
+                stories completed
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Vocabulary</CardTitle>
+              <Library className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">--</div>
+              <p className="text-xs text-muted-foreground">
+                words learned
+              </p>
+            </CardContent>
+          </Card>
         </div>
-      </main>
+
+        {/* Quick Actions */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Link href="/diary">
+            <Card className="cursor-pointer transition-shadow hover:shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Write Diary Entry
+                </CardTitle>
+                <CardDescription>
+                  Share your day and generate personalized content
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full">Start Writing</Button>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/stories">
+            <Card className="cursor-pointer transition-shadow hover:shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5" />
+                  Read a Story
+                </CardTitle>
+                <CardDescription>
+                  Immerse yourself in mini-stories with audio
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full" variant="outline">Browse Stories</Button>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/vodex">
+            <Card className="cursor-pointer transition-shadow hover:shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Library className="h-5 w-5" />
+                  VoDex
+                </CardTitle>
+                <CardDescription>
+                  Review your vocabulary and track progress
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full" variant="secondary">Open VoDex</Button>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Diary Entries</CardTitle>
+              <CardDescription>Your latest entries and their status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                No diary entries yet. Start writing to see your progress!
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Continue Reading</CardTitle>
+              <CardDescription>Pick up where you left off</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                No stories in progress. Browse stories to start reading!
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </HydrateClient>
   );
 }

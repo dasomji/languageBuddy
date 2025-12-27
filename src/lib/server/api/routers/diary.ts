@@ -8,13 +8,110 @@ import {
   userVocabProgress,
   userSettings,
 } from "~/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { processDiaryWithAI } from "~/lib/server/ai/prompts";
 import { generateImage } from "~/lib/server/ai/fal";
 import { generateAudio } from "~/lib/server/ai/elevenlabs";
 import { uploadFromBuffer, uploadFromUrl } from "~/lib/server/storage";
 
 export const diaryRouter = createTRPCRouter({
+  createEntry: protectedProcedure
+    .input(
+      z.object({
+        rawText: z.string().min(1, "Diary entry cannot be empty"),
+        targetLanguage: z.string().min(1, "Target language is required"),
+        level: z.enum(["beginner", "A1", "A2"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Create the diary entry
+      const [entry] = await ctx.db
+        .insert(diaryEntries)
+        .values({
+          userId: ctx.session.user.id,
+          rawText: input.rawText,
+          targetLanguage: input.targetLanguage,
+          level: input.level,
+          processed: false,
+        })
+        .returning();
+
+      if (!entry) {
+        throw new Error("Failed to create diary entry");
+      }
+
+      // Note: AI processing should be triggered separately by the client
+      // using the processEntry mutation to avoid server-side call issues
+
+      return { entryId: entry.id };
+    }),
+
+  getEntries: protectedProcedure
+    .input(
+      z
+        .object({
+          limit: z.number().min(1).max(100).default(20),
+          cursor: z.string().optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const limit = input?.limit ?? 20;
+      const cursor = input?.cursor;
+
+      const entries = await ctx.db.query.diaryEntries.findMany({
+        where: cursor
+          ? and(
+              eq(diaryEntries.userId, ctx.session.user.id),
+              eq(diaryEntries.processed, true),
+            )
+          : eq(diaryEntries.userId, ctx.session.user.id),
+        orderBy: [desc(diaryEntries.createdAt)],
+        limit: limit + 1,
+      });
+
+      // Get story info for each processed entry
+      const entriesWithStories = await Promise.all(
+        entries.map(async (entry) => {
+          let story = null;
+          if (entry.processed) {
+            story = await ctx.db.query.miniStories.findFirst({
+              where: eq(miniStories.diaryEntryId, entry.id),
+            });
+          }
+          return { ...entry, story };
+        }),
+      );
+
+      let nextCursor: typeof cursor | undefined = undefined;
+      if (entries.length > limit) {
+        const nextItem = entries.pop();
+        nextCursor = nextItem?.id;
+      }
+
+      return {
+        entries: entriesWithStories,
+        nextCursor,
+      };
+    }),
+
+  getEntry: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const entry = await ctx.db.query.diaryEntries.findFirst({
+        where: and(
+          eq(diaryEntries.id, input.id),
+          eq(diaryEntries.userId, ctx.session.user.id),
+        ),
+      });
+
+      if (!entry) {
+        throw new Error("Diary entry not found");
+      }
+
+      return entry;
+    }),
+
   processEntry: protectedProcedure
     .input(z.object({ diaryEntryId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {

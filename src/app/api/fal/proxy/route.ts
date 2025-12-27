@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "~/env";
 
-export const TARGET_URL_HEADER = "x-fal-target-url";
+const TARGET_URL_HEADER = "x-fal-target-url";
 const FAL_URL_REG_EXP = /(\.|^)fal\.(run|ai|dev)$/;
 const EXCLUDED_HEADERS = ["content-length", "content-encoding"];
 
@@ -52,10 +52,9 @@ async function handleRequest(request: NextRequest) {
 
   const proxyUserAgent = `@fal-ai/server-proxy/nextjs`;
   const userAgent = request.headers.get("user-agent") ?? "";
-  
-  const body = request.method.toUpperCase() === "GET" 
-    ? undefined 
-    : await request.text();
+
+  const body =
+    request.method.toUpperCase() === "GET" ? undefined : await request.text();
 
   const res = await fetch(targetUrl, {
     method: request.method,
@@ -91,4 +90,3 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return handleRequest(request);
 }
-

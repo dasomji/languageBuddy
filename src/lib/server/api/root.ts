@@ -1,5 +1,7 @@
 import { postRouter } from "~/lib/server/api/routers/post";
 import { diaryRouter } from "~/lib/server/api/routers/diary";
+import { vodexRouter } from "~/lib/server/api/routers/vodex";
+import { storyRouter } from "~/lib/server/api/routers/story";
 import { createCallerFactory, createTRPCRouter } from "~/lib/server/api/trpc";
 
 /**
@@ -10,6 +12,8 @@ import { createCallerFactory, createTRPCRouter } from "~/lib/server/api/trpc";
 export const appRouter = createTRPCRouter({
   post: postRouter,
   diary: diaryRouter,
+  vodex: vodexRouter,
+  story: storyRouter,
 });
 
 // export type definition of API
