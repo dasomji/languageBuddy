@@ -1,9 +1,19 @@
 "use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { BookOpen, Calendar, Grid, Library } from "lucide-react";
-import { cn } from "~/lib/utils";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+} from "~/components/ui/sidebar";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Grid },
@@ -12,41 +22,49 @@ const navigation = [
   { name: "Stories", href: "/stories", icon: BookOpen },
 ];
 
-export function Sidebar() {
+export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r bg-card text-card-foreground md:flex">
-      <div className="flex h-16 items-center border-b px-6">
-        <h1 className="text-xl font-bold">LanguageBuddy</h1>
-      </div>
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {navigation.map((item) => {
-          const isActive = pathname === item.href || 
-            (item.href !== "/" && pathname.startsWith(item.href));
-          
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.name}
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="border-t p-4">
-        <p className="text-xs text-muted-foreground">
+    <Sidebar>
+      <SidebarHeader className="h-16 border-b flex items-center px-6">
+        <Link href="/" className="flex items-center gap-2">
+          <h1 className="text-xl font-bold">LanguageBuddy</h1>
+        </Link>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigation.map((item) => {
+                const isActive = pathname === item.href || 
+                  (item.href !== "/" && pathname.startsWith(item.href));
+                
+                return (
+                  <SidebarMenuItem key={item.name}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.name}
+                    >
+                      <Link href={item.href}>
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.name}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter className="border-t p-4">
+        <p className="text-xs text-muted-foreground text-center">
           Learn languages your way
         </p>
-      </div>
-    </aside>
+      </SidebarFooter>
+    </Sidebar>
   );
 }

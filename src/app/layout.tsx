@@ -1,34 +1,27 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { auth } from "~/lib/auth";
-import { Sidebar } from "~/components/sidebar/sidebar";
-import { MobileNav } from "~/components/sidebar/mobile-nav";
+import "~/styles/globals.css";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { type Metadata } from "next";
 import { TRPCReactProvider } from "~/trpc/react";
 
-export default async function AppLayout({
+export const metadata: Metadata = {
+  title: "LanguageBuddy",
+  description: "Learn languages your way",
+  icons: [{ rel: "icon", url: "/favicon.ico" }],
+};
+
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    redirect("/auth/signin");
-  }
-
   return (
-    <TRPCReactProvider>
-      <div className="min-h-screen bg-background">
-        <Sidebar />
-        <MobileNav />
-        <main className="md:pl-64">
-          <div className="mx-auto max-w-7xl px-4 py-6 pb-20 md:py-8">
-            {children}
-          </div>
-        </main>
-      </div>
-    </TRPCReactProvider>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="font-sans">
+        <TRPCReactProvider>
+          {children}
+        </TRPCReactProvider>
+      </body>
+    </html>
   );
 }
