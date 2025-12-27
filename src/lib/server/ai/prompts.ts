@@ -27,6 +27,7 @@ export const DiaryProcessingResultSchema = z.object({
       kind: z.string(),
       sex: z.enum(["masculine", "feminine", "neuter", "none"]),
       exampleSentence: z.string(),
+      exampleSentenceTranslation: z.string(),
       imagePrompt: z.string(),
     }),
   ),
@@ -49,13 +50,21 @@ I will provide you with a diary entry. Your task is to:
    - Break it into pages, each with max 2 sentences.
    - For each page, create a descriptive image prompt in the style: "${imageStyle}".
    - Ensure the image prompts are consistent and have a "${backgroundColor}" background.
-3. Extract all vocabularies from the translated story. Skip names.
-   - For each word, provide its lemma, translation, part of speech (kind), and gender (sex) and if it has one the article.
-   - Create a simple example sentence for each word.
-   - Create a mnemonic-cued image prompt for each word:
-     - Fire-themed for masculine words.
-     - Ice-themed for feminine words.
-     - Use background color "${backgroundColor}".
+3. Extract ALL unique words from the translated story except for proper names. 
+   - DO NOT limit yourself to nouns. Extract verbs (in their inflected form from the text), adjectives, adverbs, conjunctions, etc.
+   - For each word:
+     - word: the word as it appears in the story.
+     - lemma: the base form of the word (e.g., "mangeons" -> "manger").
+     - translation: translation into the user's native language.
+     - kind: part of speech (noun, verb, adjective, adverb, etc.).
+     - sex: for nouns, specify "masculine", "feminine", or "neuter". Otherwise use "none".
+     - exampleSentence: a simple, separate example sentence using the word.
+     - exampleSentenceTranslation: translation of the example sentence.
+     - imagePrompt: a mnemonic-cued image prompt for the word:
+       - Fire-themed for masculine words.
+       - Ice-themed for feminine words.
+       - Neutral/Educational for others.
+       - Use background color "${backgroundColor}".
 
 Diary Entry:
 """
@@ -84,6 +93,7 @@ Return the result as a single JSON object with the following structure:
       "kind": "string",
       "sex": "masculine | feminine | neuter | none",
       "exampleSentence": "string",
+      "exampleSentenceTranslation": "string",
       "imagePrompt": "string"
     }
   ]

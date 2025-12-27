@@ -291,6 +291,8 @@ export const diaryRouter = createTRPCRouter({
                 wordKind: vocabData.kind,
                 sex: vocabData.sex,
                 exampleSentence: vocabData.exampleSentence,
+                exampleSentenceTranslation:
+                  vocabData.exampleSentenceTranslation,
                 exampleAudioKey: audioKey,
                 imageKey,
               })

@@ -1,0 +1,1 @@
+ALTER TABLE "vocabularies" ADD COLUMN "example_sentence_translation" text;

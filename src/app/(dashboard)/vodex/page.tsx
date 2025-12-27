@@ -11,12 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { PresignedImage } from "~/components/ui/presigned-image";
 import { AudioPlayer } from "~/components/ui/audio-player";
@@ -38,6 +33,7 @@ interface VocabEntry {
   wordKind: string;
   sex: string | null;
   exampleSentence: string | null;
+  exampleSentenceTranslation: string | null;
   imageKey: string | null;
   exampleAudioKey: string | null;
   lemma: string;
@@ -84,7 +80,7 @@ export default function VodexPage() {
   if (isLoadingSpace) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -97,7 +93,7 @@ export default function VodexPage() {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
           <Library className="h-8 w-8" />
           VoDex
         </h1>
@@ -110,7 +106,7 @@ export default function VodexPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Total Words
             </CardTitle>
           </CardHeader>
@@ -120,7 +116,7 @@ export default function VodexPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Total XP
             </CardTitle>
           </CardHeader>
@@ -130,12 +126,12 @@ export default function VodexPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Masculine Words
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
+            <div className="flex items-center gap-2 text-2xl font-bold">
               <Flame className="h-5 w-5 text-orange-500" />
               {stats?.wordKindDistribution.find((w) => w.kind === "masculine")
                 ?.count ?? 0}
@@ -144,12 +140,12 @@ export default function VodexPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Feminine Words
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
+            <div className="flex items-center gap-2 text-2xl font-bold">
               <Snowflake className="h-5 w-5 text-cyan-500" />
               {stats?.wordKindDistribution.find((w) => w.kind === "feminine")
                 ?.count ?? 0}
@@ -168,7 +164,7 @@ export default function VodexPage() {
             <div className="space-y-2">
               <Label htmlFor="search">Search</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   id="search"
                   placeholder="Search words..."
@@ -180,10 +176,7 @@ export default function VodexPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="wordKind">Word Kind</Label>
-              <Select
-                value={wordKindFilter}
-                onValueChange={setWordKindFilter}
-              >
+              <Select value={wordKindFilter} onValueChange={setWordKindFilter}>
                 <SelectTrigger id="wordKind">
                   <SelectValue placeholder="All kinds" />
                 </SelectTrigger>
@@ -218,14 +211,15 @@ export default function VodexPage() {
       {/* Vocabulary Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
         </div>
       ) : vocabData?.vocabularies.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Library className="h-12 w-12 text-muted-foreground mb-4" />
+            <Library className="text-muted-foreground mb-4 h-12 w-12" />
             <p className="text-muted-foreground">
-              No vocabulary found. Start writing diary entries to build your VoDex!
+              No vocabulary found. Start writing diary entries to build your
+              VoDex!
             </p>
           </CardContent>
         </Card>
@@ -254,7 +248,10 @@ export default function VodexPage() {
       )}
 
       {/* Vocabulary Detail Dialog */}
-      <Dialog open={!!selectedVocab} onOpenChange={() => setSelectedVocab(null)}>
+      <Dialog
+        open={!!selectedVocab}
+        onOpenChange={() => setSelectedVocab(null)}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <div className="flex items-center gap-3">
@@ -269,9 +266,10 @@ export default function VodexPage() {
               )}
               <Badge
                 className={cn(
-                  selectedVocab?.wordKind?.toLowerCase() && wordKindColors[selectedVocab.wordKind.toLowerCase()]
+                  selectedVocab?.wordKind?.toLowerCase() &&
+                    wordKindColors[selectedVocab.wordKind.toLowerCase()]
                     ? wordKindColors[selectedVocab.wordKind.toLowerCase()]
-                    : "bg-gray-100 text-gray-800"
+                    : "bg-gray-100 text-gray-800",
                 )}
               >
                 {selectedVocab?.wordKind}
@@ -296,6 +294,11 @@ export default function VodexPage() {
                   <p className="text-lg italic">
                     &quot;{selectedVocab.exampleSentence}&quot;
                   </p>
+                  {selectedVocab.exampleSentenceTranslation && (
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      {selectedVocab.exampleSentenceTranslation}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -316,4 +319,3 @@ export default function VodexPage() {
     </div>
   );
 }
-

@@ -1,7 +1,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "~/lib/auth";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "~/components/ui/sidebar";
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/sidebar/sidebar";
 
 export default async function DashboardLayout({
@@ -21,10 +25,10 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4 md:px-6">
+        <header className="bg-background sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 border-b px-4 md:px-6">
           <SidebarTrigger />
           <div className="flex flex-1 items-center gap-2">
-            <h2 className="text-sm font-semibold text-muted-foreground md:hidden">
+            <h2 className="text-muted-foreground text-sm font-semibold md:hidden">
               LanguageBuddy
             </h2>
           </div>
@@ -38,4 +42,3 @@ export default async function DashboardLayout({
     </SidebarProvider>
   );
 }
-

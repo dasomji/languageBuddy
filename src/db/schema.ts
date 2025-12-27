@@ -83,6 +83,7 @@ export const vocabularies = pgTable("vocabularies", {
   wordKind: text("word_kind").notNull(), // noun, verb, adjective, etc.
   sex: text("sex"), // masculine, feminine, none
   exampleSentence: text("example_sentence"),
+  exampleSentenceTranslation: text("example_sentence_translation"),
   exampleAudioKey: text("example_audio_key"),
   imageKey: text("image_key"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
