@@ -1,5 +1,5 @@
 "use client";
-import { BookOpen, Calendar, Grid, Library } from "lucide-react";
+import { BookOpen, Calendar, Grid, Library, Settings } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -20,6 +20,7 @@ const navigation = [
   { name: "Diary", href: "/diary", icon: Calendar },
   { name: "VoDex", href: "/vodex", icon: Library },
   { name: "Stories", href: "/stories", icon: BookOpen },
+  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

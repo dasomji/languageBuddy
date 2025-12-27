@@ -49,8 +49,8 @@ I will provide you with a diary entry. Your task is to:
    - Break it into pages, each with max 2 sentences.
    - For each page, create a descriptive image prompt in the style: "${imageStyle}".
    - Ensure the image prompts are consistent and have a "${backgroundColor}" background.
-3. Extract important vocabulary from the translated story.
-   - For each word, provide its lemma, translation, part of speech (kind), and gender (sex).
+3. Extract all vocabularies from the translated story. Skip names.
+   - For each word, provide its lemma, translation, part of speech (kind), and gender (sex) and if it has one the article.
    - Create a simple example sentence for each word.
    - Create a mnemonic-cued image prompt for each word:
      - Fire-themed for masculine words.

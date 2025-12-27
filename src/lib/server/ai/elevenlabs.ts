@@ -14,6 +14,9 @@ export async function generateAudio(text: string): Promise<Buffer> {
       text: text,
       modelId: TTS_MODEL,
       outputFormat: "mp3_44100_128",
+      voiceSettings: {
+        speed: 0.7,
+      },
     });
 
     // Convert stream to Buffer

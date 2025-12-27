@@ -27,7 +27,7 @@ export async function generateImage(options: GenerateImageOptions) {
     const result = await fal.subscribe(IMAGE_MODEL, {
       input: {
         prompt: options.prompt,
-        image_size: options.image_size ?? "landscape_4_3",
+        image_size: options.image_size ?? "square_hd",
       },
     });
 
