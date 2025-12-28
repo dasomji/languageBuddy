@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "~/trpc/react";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { useIsMobile } from "~/hooks/use-mobile";
+import { useMediaQuery } from "~/hooks/use-media-query";
 import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut";
 import { Loader2, Search, Library, Flame, Snowflake, Play } from "lucide-react";
 import { cn } from "~/lib/utils";
@@ -45,9 +45,39 @@ export default function VodexPage() {
   const [sexFilter, setSexFilter] = useState<string>("all");
   const [selectedVocab, setSelectedVocab] = useState<VocabEntry | null>(null);
   const [isMobileDialogOpen, setIsMobileDialogOpen] = useState(false);
-  const isMobile = useIsMobile();
+  const isDesktop = useMediaQuery("(min-width: 640px)"); // Matches Tailwind 'sm'
 
   const [activeAudio, setActiveAudio] = useState<string | null>(null);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    const touch = e.targetTouches[0];
+    if (touch) {
+      setTouchStart(touch.clientX);
+    }
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const touch = e.targetTouches[0];
+    if (touch) {
+      setTouchEnd(touch.clientX);
+    }
+  };
+
+  const onTouchEnd = () => {
+    if (touchStart === null || touchEnd === null) return;
+    const minSwipeDistance = 50;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    if (isLeftSwipe) {
+      handleNextWord();
+    } else if (isRightSwipe) {
+      handlePrevWord();
+    }
+  };
 
   const { data: activeSpace, isLoading: isLoadingSpace } =
     api.learningSpace.getActive.useQuery();
@@ -156,9 +186,9 @@ export default function VodexPage() {
       </div>
 
       {/* Main Content: Split Layout */}
-      <div className="flex h-[calc(100vh-280px)] min-h-[500px] flex-col gap-6 lg:flex-row">
+      <div className="flex h-[calc(100vh-280px)] min-h-[500px] flex-col gap-6 sm:flex-row">
         {/* Left Column: List and Filters */}
-        <div className="flex w-full flex-col gap-4 lg:w-1/3">
+        <div className="flex w-full flex-col gap-4 sm:w-1/3">
           {/* Search and Filters */}
           <div className="space-y-4">
             <div className="relative">
@@ -220,7 +250,7 @@ export default function VodexPage() {
                     id={`vocab-${vocab.id}`}
                     onClick={() => {
                       setSelectedVocab(vocab as VocabEntry);
-                      if (isMobile) {
+                      if (!isDesktop) {
                         setIsMobileDialogOpen(true);
                       }
                     }}
@@ -258,7 +288,7 @@ export default function VodexPage() {
         </div>
 
         {/* Right Column: Preview */}
-        <div className="bg-card hidden flex-1 overflow-y-auto rounded-xl border lg:block">
+        <div className="bg-card hidden flex-1 overflow-y-auto rounded-xl border sm:block">
           {selectedVocab ? (
             <div className="p-6">
               <div className="mb-6 flex items-start justify-between">
@@ -390,8 +420,13 @@ export default function VodexPage() {
 
       {/* Mobile Vocabulary Detail Dialog */}
       <Dialog open={isMobileDialogOpen} onOpenChange={setIsMobileDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent
+          className="flex h-dvh w-screen max-w-none flex-col rounded-none border-none p-0 sm:max-w-2xl sm:rounded-lg sm:border sm:p-6"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          <DialogHeader className="shrink-0 p-4 pb-0 sm:p-0">
             <div className="flex items-center gap-3">
               <DialogTitle className="text-2xl">
                 {selectedVocab?.word}
@@ -414,29 +449,37 @@ export default function VodexPage() {
               </Badge>
             </div>
           </DialogHeader>
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-6 p-4 sm:grid sm:grid-cols-2 sm:p-0">
+            <div className="flex min-h-0 flex-col justify-center space-y-4">
               <div>
-                <Label className="text-muted-foreground">Translation</Label>
-                <p className="text-lg">{selectedVocab?.translation}</p>
+                <Label className="text-muted-foreground text-xs tracking-wider uppercase">
+                  Translation
+                </Label>
+                <p className="text-lg font-medium">
+                  {selectedVocab?.translation}
+                </p>
               </div>
               <div>
-                <Label className="text-muted-foreground">Lemma</Label>
-                <p className="text-lg">{selectedVocab?.lemma}</p>
+                <Label className="text-muted-foreground text-xs tracking-wider uppercase">
+                  Lemma
+                </Label>
+                <p className="text-base">{selectedVocab?.lemma}</p>
               </div>
               {selectedVocab?.exampleSentence && (
                 <div>
-                  <Label className="text-muted-foreground">
+                  <Label className="text-muted-foreground text-xs tracking-wider uppercase">
                     Example Sentence
                   </Label>
-                  <p className="text-lg italic">
-                    &quot;{selectedVocab.exampleSentence}&quot;
-                  </p>
-                  {selectedVocab.exampleSentenceTranslation && (
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {selectedVocab.exampleSentenceTranslation}
+                  <div className="bg-muted mt-1 rounded-lg p-3">
+                    <p className="text-base italic">
+                      &quot;{selectedVocab.exampleSentence}&quot;
                     </p>
-                  )}
+                    {selectedVocab.exampleSentenceTranslation && (
+                      <p className="text-muted-foreground mt-1 border-t pt-1 text-xs">
+                        {selectedVocab.exampleSentenceTranslation}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
               {selectedVocab?.exampleAudioKey && (
@@ -453,14 +496,20 @@ export default function VodexPage() {
                 </Button>
               )}
             </div>
-            <div>
-              {selectedVocab?.imageKey && (
-                <div className="aspect-square w-full overflow-hidden rounded-md border">
+            <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl border">
+              {selectedVocab?.imageKey ? (
+                <div className="h-full w-full">
                   <PresignedImage
                     src={selectedVocab.imageKey}
                     alt={selectedVocab.word}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
+                </div>
+              ) : (
+                <div className="bg-muted/50 flex h-full w-full items-center justify-center border-dashed">
+                  <p className="text-muted-foreground text-sm italic">
+                    No image available
+                  </p>
                 </div>
               )}
             </div>

@@ -23,7 +23,7 @@ async function handleRequest(request: NextRequest) {
   let urlHost: string;
   try {
     urlHost = new URL(targetUrl).host;
-  } catch (e) {
+  } catch (_e) {
     return NextResponse.json({ error: "Invalid target URL" }, { status: 400 });
   }
 

@@ -38,7 +38,7 @@ export default function DiaryPage() {
   const createEntry = api.diary.createEntry.useMutation({
     onSuccess: ({ entryId }) => {
       setRawText("");
-      utils.diary.getEntries.invalidate();
+      void utils.diary.getEntries.invalidate();
       // Trigger AI processing
       processEntry.mutate({ diaryEntryId: entryId, mode: "full" });
     },
@@ -49,7 +49,7 @@ export default function DiaryPage() {
 
   const processEntry = api.diary.processEntry.useMutation({
     onSuccess: () => {
-      utils.diary.getEntries.invalidate();
+      void utils.diary.getEntries.invalidate();
     },
     onError: (error) => {
       console.error("Failed to process entry:", error);

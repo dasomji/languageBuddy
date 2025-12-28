@@ -52,11 +52,11 @@ export function LearningSpaceSwitcher() {
 
   const setActiveMutation = api.learningSpace.setActive.useMutation({
     onSuccess: () => {
-      utils.learningSpace.getActive.invalidate();
-      utils.diary.getEntries.invalidate();
-      utils.story.getAll.invalidate();
-      utils.vodex.getAll.invalidate();
-      utils.vodex.getStats.invalidate();
+      void utils.learningSpace.getActive.invalidate();
+      void utils.diary.getEntries.invalidate();
+      void utils.story.getAll.invalidate();
+      void utils.vodex.getAll.invalidate();
+      void utils.vodex.getStats.invalidate();
       router.refresh();
       setOpen(false);
       if (isMobile) setOpenMobile(false);
@@ -65,8 +65,8 @@ export function LearningSpaceSwitcher() {
 
   const createMutation = api.learningSpace.create.useMutation({
     onSuccess: () => {
-      utils.learningSpace.list.invalidate();
-      utils.learningSpace.getActive.invalidate();
+      void utils.learningSpace.list.invalidate();
+      void utils.learningSpace.getActive.invalidate();
       setShowNewSpaceDialog(false);
     },
   });

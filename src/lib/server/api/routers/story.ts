@@ -4,7 +4,6 @@ import {
   miniStories,
   miniStoryPages,
   userSettings,
-  learningSpaces,
 } from "~/db/schema";
 import { eq, desc, and, asc } from "drizzle-orm";
 
@@ -20,7 +19,6 @@ export const storyRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const limit = input?.limit ?? 20;
-      const cursor = input?.cursor;
 
       // Get active space
       const settings = await ctx.db.query.userSettings.findFirst({

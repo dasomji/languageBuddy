@@ -46,7 +46,7 @@ const wordKindColors: Record<string, string> = {
 };
 
 export function VocabCard({ vocab, onPlayAudio, onClick }: VocabCardProps) {
-  const [imageError, setImageError] = useState(false);
+  const [imageError] = useState(false);
 
   const sexIcon =
     vocab.sex === "masculine" ? (

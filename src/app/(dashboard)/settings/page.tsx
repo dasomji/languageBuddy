@@ -84,7 +84,7 @@ export default function SettingsPage() {
   const updateSettings = api.settings.update.useMutation({
     onSuccess: () => {
       toast.success("Settings updated successfully");
-      utils.settings.get.invalidate();
+      void utils.settings.get.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to update settings");
@@ -94,8 +94,8 @@ export default function SettingsPage() {
   const deleteSpaceMutation = api.learningSpace.delete.useMutation({
     onSuccess: () => {
       toast.success("Learning space deleted");
-      utils.learningSpace.list.invalidate();
-      utils.learningSpace.getActive.invalidate();
+      void utils.learningSpace.list.invalidate();
+      void utils.learningSpace.getActive.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to delete space");

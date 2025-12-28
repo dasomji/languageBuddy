@@ -37,8 +37,8 @@ export function NoActiveSpace() {
 
   const createMutation = api.learningSpace.create.useMutation({
     onSuccess: () => {
-      utils.learningSpace.list.invalidate();
-      utils.learningSpace.getActive.invalidate();
+      void utils.learningSpace.list.invalidate();
+      void utils.learningSpace.getActive.invalidate();
       router.refresh();
       setShowNewSpaceDialog(false);
     },

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/lib/server/api/trpc";
 import { vocabularies, userVocabProgress, userSettings } from "~/db/schema";
-import { eq, desc, and, like, or, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, like, or, sql, inArray, type SQL } from "drizzle-orm";
 
 export const vodexRouter = createTRPCRouter({
   getAll: protectedProcedure
@@ -49,7 +49,9 @@ export const vodexRouter = createTRPCRouter({
       }
 
       // Build conditions for vocabularies
-      const vocabConditions: any[] = [inArray(vocabularies.id, vocabIds)];
+      const vocabConditions: (SQL | undefined)[] = [
+        inArray(vocabularies.id, vocabIds),
+      ];
 
       if (input?.search) {
         vocabConditions.push(
@@ -69,11 +71,12 @@ export const vodexRouter = createTRPCRouter({
         vocabConditions.push(eq(vocabularies.sex, input.sex));
       }
 
+      const where = and(
+        ...vocabConditions.filter((c): c is SQL => c !== undefined),
+      );
+
       const vocabulariesList = await ctx.db.query.vocabularies.findMany({
-        where:
-          vocabConditions.length > 1
-            ? and(...vocabConditions)
-            : vocabConditions[0],
+        where,
         orderBy: [desc(vocabularies.createdAt)],
         limit: limit + 1,
       });
