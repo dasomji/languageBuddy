@@ -27,6 +27,13 @@ export default async function Home() {
   void api.story.getAll.prefetch();
   void api.vodex.getAll.prefetch({ limit: 5 });
 
+  // Fetch stats in parallel
+  const [diaryStats, storyStats, vodexStats] = await Promise.all([
+    api.diary.getStats(),
+    api.story.getStats(),
+    api.vodex.getStats(),
+  ]);
+
   return (
     <HydrateClient>
       <div className="space-y-8 pb-24">
@@ -41,7 +48,7 @@ export default async function Home() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -50,7 +57,9 @@ export default async function Home() {
               <Calendar className="text-muted-foreground h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">--</div>
+              <div className="text-2xl font-bold">
+                {diaryStats.totalEntries}
+              </div>
               <p className="text-muted-foreground text-xs">entries written</p>
             </CardContent>
           </Card>
@@ -62,7 +71,9 @@ export default async function Home() {
               <BookOpen className="text-muted-foreground h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">--</div>
+              <div className="text-2xl font-bold">
+                {storyStats.completedStories}
+              </div>
               <p className="text-muted-foreground text-xs">stories completed</p>
             </CardContent>
           </Card>
@@ -72,14 +83,14 @@ export default async function Home() {
               <Library className="text-muted-foreground h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">--</div>
+              <div className="text-2xl font-bold">{vodexStats.totalWords}</div>
               <p className="text-muted-foreground text-xs">words learned</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Link href="/diary">
             <Card className="cursor-pointer transition-shadow hover:shadow-md">
               <CardHeader>

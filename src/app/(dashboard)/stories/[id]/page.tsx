@@ -181,7 +181,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex max-h-full min-h-0 flex-1 flex-col">
       <HeaderSetter>
         <Breadcrumb>
           <BreadcrumbList>
@@ -193,10 +193,12 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <div className="flex items-center gap-2">
-                <BreadcrumbPage className="text-xl font-bold">
+                <BreadcrumbPage className="font-bold sm:text-xl">
                   {story.title}
                 </BreadcrumbPage>
-                <Badge variant="outline">{story.languageLevel}</Badge>
+                <div className="hidden sm:block">
+                  <Badge variant="outline">{story.languageLevel}</Badge>
+                </div>
               </div>
             </BreadcrumbItem>
           </BreadcrumbList>
@@ -204,9 +206,9 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
       </HeaderSetter>
 
       {/* Story Content */}
-      <div className="grid min-h-0 flex-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 sm:grid sm:grid-cols-2">
         {/* Text */}
-        <div className="flex min-h-0 flex-col items-center justify-center space-y-6 overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center space-y-6 overflow-y-auto">
           <div className="w-full">
             <div className="w-full">
               {currentPageData &&
@@ -220,7 +222,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
           </div>
         </div>
         {/* Image */}
-        <div className="relative flex min-h-0 items-center justify-center overflow-hidden lg:rounded-lg">
+        <div className="relative flex min-h-0 shrink items-center justify-center overflow-hidden lg:rounded-lg">
           {currentPageData?.imageKey ? (
             <PresignedImage
               src={currentPageData.imageKey}
