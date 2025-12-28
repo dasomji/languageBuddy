@@ -9,7 +9,7 @@ import {
   userSettings,
   learningSpaces,
 } from "~/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { processDiaryWithAI } from "~/lib/server/ai/prompts";
 import { generateImage } from "~/lib/server/ai/fal";
 import { generateAudio } from "~/lib/server/ai/elevenlabs";
@@ -325,4 +325,33 @@ export const diaryRouter = createTRPCRouter({
 
       return { storyId };
     }),
+
+  getStats: protectedProcedure.query(async ({ ctx }) => {
+    // Get active space
+    const settings = await ctx.db.query.userSettings.findFirst({
+      where: eq(userSettings.userId, ctx.session.user.id),
+    });
+
+    if (!settings?.activeLearningSpaceId) {
+      return {
+        totalEntries: 0,
+      };
+    }
+
+    const [stats] = await ctx.db
+      .select({
+        count: sql<number>`count(*)`,
+      })
+      .from(diaryEntries)
+      .where(
+        and(
+          eq(diaryEntries.userId, ctx.session.user.id),
+          eq(diaryEntries.learningSpaceId, settings.activeLearningSpaceId),
+        ),
+      );
+
+    return {
+      totalEntries: stats?.count ?? 0,
+    };
+  }),
 });
