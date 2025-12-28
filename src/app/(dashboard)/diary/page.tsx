@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -24,8 +24,57 @@ import {
   Languages,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Progress } from "~/components/ui/progress";
 
 import { NoActiveSpace } from "~/components/learning-space/no-active-space";
+
+function ProcessingIndicator({
+  entryId,
+  initialStatus,
+  initialProgress,
+  onComplete,
+}: {
+  entryId: string;
+  initialStatus?: string | null;
+  initialProgress?: number;
+  onComplete: () => void;
+}) {
+  const [info, setInfo] = useState({
+    status: initialStatus ?? "Starting...",
+    progress: initialProgress ?? 0,
+  });
+
+  api.diary.processProgress.useSubscription(
+    { diaryEntryId: entryId },
+    {
+      onData: (data) => {
+        if (data.status === "error") {
+          console.error("Processing error:", data.error);
+        } else if (data.progress === 100) {
+          onComplete();
+        } else {
+          setInfo({ status: data.status, progress: data.progress });
+        }
+      },
+      onError: (err) => {
+        console.error("Subscription error:", err);
+      },
+    },
+  );
+
+  return (
+    <div className="bg-muted/50 mt-3 space-y-2 rounded-md p-3">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground flex items-center gap-2">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {info.status}
+        </span>
+        <span className="font-medium">{info.progress}%</span>
+      </div>
+      <Progress value={info.progress} className="h-1.5" />
+    </div>
+  );
+}
 
 export default function DiaryPage() {
   const router = useRouter();
@@ -35,29 +84,26 @@ export default function DiaryPage() {
     api.learningSpace.getActive.useQuery();
 
   const utils = api.useUtils();
+
+  const { data: entriesData, isLoading: isLoadingEntries } =
+    api.diary.getEntries.useQuery({ limit: 20 });
+
+  const startProcessing = api.diary.startProcessing.useMutation({
+    onSuccess: () => {
+      void utils.diary.getEntries.invalidate();
+    },
+  });
+
   const createEntry = api.diary.createEntry.useMutation({
     onSuccess: ({ entryId }) => {
       setRawText("");
       void utils.diary.getEntries.invalidate();
-      // Trigger AI processing
-      processEntry.mutate({ diaryEntryId: entryId, mode: "full" });
+      startProcessing.mutate({ diaryEntryId: entryId, mode: "full" });
     },
     onError: (error) => {
       console.error("Failed to create entry:", error);
     },
   });
-
-  const processEntry = api.diary.processEntry.useMutation({
-    onSuccess: () => {
-      void utils.diary.getEntries.invalidate();
-    },
-    onError: (error) => {
-      console.error("Failed to process entry:", error);
-    },
-  });
-
-  const { data: entriesData, isLoading: isLoadingEntries } =
-    api.diary.getEntries.useQuery({ limit: 20 });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,6 +236,16 @@ export default function DiaryPage() {
                   <p className="text-muted-foreground line-clamp-2 text-sm">
                     {entry.rawText}
                   </p>
+
+                  {!entry.processed && entry.processingProgress < 100 && (
+                    <ProcessingIndicator
+                      entryId={entry.id}
+                      initialStatus={entry.processingStatus}
+                      initialProgress={entry.processingProgress}
+                      onComplete={() => void utils.diary.getEntries.invalidate()}
+                    />
+                  )}
+
                   <div className="mt-2 flex flex-col gap-3">
                     {entry.stories && entry.stories.length > 0 && (
                       <div className="flex flex-wrap gap-2">
@@ -201,9 +257,8 @@ export default function DiaryPage() {
                             onClick={() => router.push(`/stories/${story.id}`)}
                           >
                             <BookOpen className="h-3 w-3" />
-                            Story {entry.stories.length > 1
-                              ? idx + 1
-                              : ""}: {story.title}
+                            Story {entry.stories.length > 1 ? idx + 1 : ""}:{" "}
+                            {story.title}
                           </Button>
                         ))}
                       </div>
@@ -214,16 +269,16 @@ export default function DiaryPage() {
                         size="sm"
                         className="text-muted-foreground hover:text-primary flex h-8 items-center gap-2 px-2"
                         onClick={() =>
-                          processEntry.mutate({
+                          startProcessing.mutate({
                             diaryEntryId: entry.id,
                             mode: "full",
                           })
                         }
-                        disabled={processEntry.isPending}
+                        disabled={startProcessing.isPending}
                       >
-                        {processEntry.isPending &&
-                        processEntry.variables?.diaryEntryId === entry.id &&
-                        processEntry.variables?.mode === "full" ? (
+                        {startProcessing.isPending &&
+                        startProcessing.variables?.diaryEntryId === entry.id &&
+                        startProcessing.variables?.mode === "full" ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           <RefreshCcw className="h-3 w-3" />
@@ -238,16 +293,16 @@ export default function DiaryPage() {
                         size="sm"
                         className="text-muted-foreground hover:text-primary flex h-8 items-center gap-2 px-2"
                         onClick={() =>
-                          processEntry.mutate({
+                          startProcessing.mutate({
                             diaryEntryId: entry.id,
                             mode: "story",
                           })
                         }
-                        disabled={processEntry.isPending}
+                        disabled={startProcessing.isPending}
                       >
-                        {processEntry.isPending &&
-                        processEntry.variables?.diaryEntryId === entry.id &&
-                        processEntry.variables?.mode === "story" ? (
+                        {startProcessing.isPending &&
+                        startProcessing.variables?.diaryEntryId === entry.id &&
+                        startProcessing.variables?.mode === "story" ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           <BookOpen className="h-3 w-3" />
@@ -262,16 +317,16 @@ export default function DiaryPage() {
                         size="sm"
                         className="text-muted-foreground hover:text-primary flex h-8 items-center gap-2 px-2"
                         onClick={() =>
-                          processEntry.mutate({
+                          startProcessing.mutate({
                             diaryEntryId: entry.id,
                             mode: "vocab",
                           })
                         }
-                        disabled={processEntry.isPending}
+                        disabled={startProcessing.isPending}
                       >
-                        {processEntry.isPending &&
-                        processEntry.variables?.diaryEntryId === entry.id &&
-                        processEntry.variables?.mode === "vocab" ? (
+                        {startProcessing.isPending &&
+                        startProcessing.variables?.diaryEntryId === entry.id &&
+                        startProcessing.variables?.mode === "vocab" ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           <Languages className="h-3 w-3" />

@@ -10,10 +10,21 @@ import {
   learningSpaces,
 } from "~/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { processDiaryWithAI } from "~/lib/server/ai/prompts";
+import {
+  generateMiniStory,
+  extractVocabularies,
+} from "~/lib/server/ai/prompts";
 import { generateImage } from "~/lib/server/ai/fal";
 import { generateAudio } from "~/lib/server/ai/elevenlabs";
 import { uploadFromBuffer, uploadFromUrl } from "~/lib/server/storage";
+import { observable } from "@trpc/server/observable";
+import { EventEmitter } from "events";
+
+// Global event emitter for progress updates
+const ee = new EventEmitter();
+
+// Track currently running processes to avoid duplicates
+const activeProcesses = new Set<string>();
 
 export const diaryRouter = createTRPCRouter({
   createEntry: protectedProcedure
@@ -148,7 +159,7 @@ export const diaryRouter = createTRPCRouter({
       return entry;
     }),
 
-  processEntry: protectedProcedure
+  startProcessing: protectedProcedure
     .input(
       z.object({
         diaryEntryId: z.string().uuid(),
@@ -156,174 +167,306 @@ export const diaryRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // 1. Fetch diary entry and user settings
-      const entry = await ctx.db.query.diaryEntries.findFirst({
-        where: eq(diaryEntries.id, input.diaryEntryId),
-      });
-
-      if (!entry) throw new Error("Diary entry not found");
-      if (entry.userId !== ctx.session.user.id) throw new Error("Unauthorized");
-
-      const settings = await ctx.db.query.userSettings.findFirst({
-        where: eq(userSettings.userId, ctx.session.user.id),
-      });
-
-      const imageStyle = settings?.imageStyle ?? "children book watercolors";
-      const backgroundColor = "#FFFFFF"; // Could come from settings in the future
-
-      // 2. Process with AI (LLM) - Combined Prompt
-      const aiResult = await processDiaryWithAI(
-        entry.rawText,
-        entry.targetLanguage,
-        entry.level,
-        { imageStyle, backgroundColor },
-      );
-
-      let storyId = "";
-
-      // 3. Create Mini-Story record (if mode is full or story)
-      if (input.mode === "full" || input.mode === "story") {
-        storyId = crypto.randomUUID();
-        const coverImageKey = `stories/${storyId}/cover.png`;
-
-        // Generate cover image
-        try {
-          const coverImageUrl = await generateImage({
-            prompt: `${aiResult.miniStory.coverImagePrompt}, ${imageStyle}`,
-          });
-          await uploadFromUrl(coverImageKey, coverImageUrl, "image/png");
-        } catch (err) {
-          console.error("Failed to generate cover image:", err);
-        }
-
-        const [story] = await ctx.db
-          .insert(miniStories)
-          .values({
-            id: storyId,
-            userId: ctx.session.user.id,
-            learningSpaceId: entry.learningSpaceId,
-            diaryEntryId: entry.id,
-            title: aiResult.miniStory.title,
-            fullTextTarget: aiResult.miniStory.textTargetLanguage,
-            fullTextNative: aiResult.miniStory.textNativeLanguage,
-            coverImageKey,
-            languageLevel: aiResult.miniStory.languageLevel,
-            originalDiaryText: aiResult.miniStory.originalText,
-            fullTranslation: aiResult.miniStory.translationText,
-          })
-          .returning();
-
-        if (!story) throw new Error("Failed to create mini-story");
-
-        // 4. Process Pages (Images & Audio)
-        for (const pageData of aiResult.miniStory.pages) {
-          const pageId = crypto.randomUUID();
-          const imageKey = `stories/${story.id}/pages/${pageId}/image.png`;
-          const audioKey = `stories/${story.id}/pages/${pageId}/audio.mp3`;
-
-          // Generate and upload assets
-          try {
-            const imageUrl = await generateImage({
-              prompt: `${pageData.imagePrompt}, ${imageStyle}`,
-            });
-            await uploadFromUrl(imageKey, imageUrl, "image/png");
-
-            const audioBuffer = await generateAudio(
-              pageData.textTargetLanguage,
-            );
-            await uploadFromBuffer(audioKey, audioBuffer, "audio/mpeg");
-
-            // Save page
-            await ctx.db.insert(miniStoryPages).values({
-              id: pageId,
-              miniStoryId: story.id,
-              pageNumber: pageData.pageNumber,
-              textTarget: pageData.textTargetLanguage,
-              textNative: pageData.textNativeLanguage,
-              imageKey,
-              audioKey,
-            });
-          } catch (err) {
-            console.error(
-              `Failed to process page ${pageData.pageNumber}:`,
-              err,
-            );
-          }
-        }
+      const processId = `${input.diaryEntryId}-${input.mode}`;
+      if (activeProcesses.has(processId)) {
+        return { status: "already_processing" };
       }
 
-      // 5. Process Vocabularies (if mode is full or vocab)
-      if (input.mode === "full" || input.mode === "vocab") {
-        for (const vocabData of aiResult.vocabularies) {
-          // Check if vocab already exists by lemma within the same learning space
-          let vocab = await ctx.db.query.vocabularies.findFirst({
-            where: and(
-              eq(vocabularies.lemma, vocabData.lemma),
-              eq(vocabularies.learningSpaceId, entry.learningSpaceId!),
-            ),
+      // Start background process
+      const run = async () => {
+        activeProcesses.add(processId);
+        try {
+          const updateProgress = async (
+            status: string,
+            progress: number,
+            extra = {},
+          ) => {
+            await ctx.db
+              .update(diaryEntries)
+              .set({
+                processingStatus: status,
+                processingProgress: progress,
+              })
+              .where(eq(diaryEntries.id, input.diaryEntryId));
+
+            ee.emit("progress", {
+              diaryEntryId: input.diaryEntryId,
+              status,
+              progress,
+              ...extra,
+            });
+          };
+
+          // 1. Fetch diary entry and user settings
+          await updateProgress("Fetching entry data...", 5);
+          const entry = await ctx.db.query.diaryEntries.findFirst({
+            where: eq(diaryEntries.id, input.diaryEntryId),
           });
 
-          if (!vocab) {
-            const vocabId = crypto.randomUUID();
-            const imageKey = `vocab/${vocabId}/image.png`;
-            const audioKey = `vocab/${vocabId}/audio.mp3`;
+          if (!entry) throw new Error("Diary entry not found");
+          if (entry.userId !== ctx.session.user.id)
+            throw new Error("Unauthorized");
 
-            try {
-              // Generate assets
-              const imageUrl = await generateImage({
-                prompt: vocabData.imagePrompt,
-              });
-              await uploadFromUrl(imageKey, imageUrl, "image/png");
+          const settings = await ctx.db.query.userSettings.findFirst({
+            where: eq(userSettings.userId, ctx.session.user.id),
+          });
 
-              const audioBuffer = await generateAudio(
-                vocabData.exampleSentence,
-              );
-              await uploadFromBuffer(audioKey, audioBuffer, "audio/mpeg");
+          const imageStyle =
+            settings?.imageStyle ?? "children book watercolors";
+          const backgroundColor = "#FFFFFF";
 
-              [vocab] = await ctx.db
-                .insert(vocabularies)
-                .values({
-                  id: vocabId,
-                  learningSpaceId: entry.learningSpaceId,
-                  word: vocabData.word,
-                  lemma: vocabData.lemma,
-                  translation: vocabData.translation,
-                  wordKind: vocabData.kind,
-                  sex: vocabData.sex,
-                  exampleSentence: vocabData.exampleSentence,
-                  exampleSentenceTranslation:
-                    vocabData.exampleSentenceTranslation,
-                  exampleAudioKey: audioKey,
-                  imageKey,
-                })
-                .returning();
-            } catch (err) {
-              console.error(`Failed to process vocab ${vocabData.word}:`, err);
-              continue;
+          let storyId = "";
+          let translatedTextForVocab = entry.rawText; // Fallback
+
+          // If mode is vocab only, try to find an existing story to extract vocab from
+          if (input.mode === "vocab") {
+            const existingStory = await ctx.db.query.miniStories.findFirst({
+              where: eq(miniStories.diaryEntryId, entry.id),
+              orderBy: [desc(miniStories.createdAt)],
+            });
+            if (existingStory) {
+              translatedTextForVocab = existingStory.fullTextTarget;
+              storyId = existingStory.id;
             }
           }
 
-          if (vocab) {
-            // Link to user progress within the space
-            await ctx.db
-              .insert(userVocabProgress)
+          // 2. Process Mini-Story (Stage 1)
+          if (input.mode === "full" || input.mode === "story") {
+            await updateProgress("Generating story with AI...", 15);
+            const miniStoryResult = await generateMiniStory(
+              entry.rawText,
+              entry.targetLanguage,
+              entry.level,
+              { imageStyle, backgroundColor },
+            );
+
+            translatedTextForVocab = miniStoryResult.textTargetLanguage;
+            storyId = crypto.randomUUID();
+            const coverImageKey = `stories/${storyId}/cover.png`;
+
+            await updateProgress("Generating cover image...", 30);
+            try {
+              const coverImageUrl = await generateImage({
+                prompt: `${miniStoryResult.coverImagePrompt}, ${imageStyle}`,
+              });
+              await uploadFromUrl(coverImageKey, coverImageUrl, "image/png");
+            } catch (err) {
+              console.error("Failed to generate cover image:", err);
+            }
+
+            await updateProgress("Saving story to database...", 40);
+            const [story] = await ctx.db
+              .insert(miniStories)
               .values({
+                id: storyId,
                 userId: ctx.session.user.id,
-                learningSpaceId: entry.learningSpaceId!,
-                vocabId: vocab.id,
+                learningSpaceId: entry.learningSpaceId,
+                diaryEntryId: entry.id,
+                title: miniStoryResult.title,
+                fullTextTarget: miniStoryResult.textTargetLanguage,
+                fullTextNative: miniStoryResult.textNativeLanguage,
+                coverImageKey,
+                languageLevel: miniStoryResult.languageLevel,
+                originalDiaryText: miniStoryResult.originalText,
+                fullTranslation: miniStoryResult.translationText,
               })
-              .onConflictDoNothing();
+              .returning();
+
+            if (!story) throw new Error("Failed to create mini-story");
+
+            const totalPages = miniStoryResult.pages.length;
+            for (const [idx, pageData] of miniStoryResult.pages.entries()) {
+              const pageProgress =
+                40 + Math.floor(((idx + 1) / totalPages) * 20);
+              await updateProgress(
+                `Processing page ${idx + 1} of ${totalPages}...`,
+                pageProgress,
+              );
+
+              const pageId = crypto.randomUUID();
+              const imageKey = `stories/${story.id}/pages/${pageId}/image.png`;
+              const audioKey = `stories/${story.id}/pages/${pageId}/audio.mp3`;
+
+              try {
+                const imageUrl = await generateImage({
+                  prompt: `${pageData.imagePrompt}, ${imageStyle}`,
+                });
+                await uploadFromUrl(imageKey, imageUrl, "image/png");
+
+                const audioBuffer = await generateAudio(
+                  pageData.textTargetLanguage,
+                );
+                await uploadFromBuffer(audioKey, audioBuffer, "audio/mpeg");
+
+                await ctx.db.insert(miniStoryPages).values({
+                  id: pageId,
+                  miniStoryId: story.id,
+                  pageNumber: pageData.pageNumber,
+                  textTarget: pageData.textTargetLanguage,
+                  textNative: pageData.textNativeLanguage,
+                  imageKey,
+                  audioKey,
+                });
+              } catch (err) {
+                console.error(
+                  `Failed to process page ${pageData.pageNumber}:`,
+                  err,
+                );
+              }
+            }
           }
+
+          // 3. Process Vocabularies (Stage 2)
+          if (input.mode === "full" || input.mode === "vocab") {
+            await updateProgress("Extracting vocabularies with AI...", 65);
+            const vocabResult = await extractVocabularies(
+              translatedTextForVocab,
+              entry.targetLanguage,
+              { backgroundColor },
+            );
+
+            console.log(
+              `[Vocab] Extracted ${vocabResult.vocabularies.length} words from AI: ${vocabResult.vocabularies.map((v) => v.word).join(", ")}`,
+            );
+
+            let addedCount = 0;
+            let skippedCount = 0;
+            const addedWords: string[] = [];
+            const skippedWords: string[] = [];
+
+            const totalVocab = vocabResult.vocabularies.length;
+            for (const [idx, vocabData] of vocabResult.vocabularies.entries()) {
+              const vocabProgress =
+                70 + Math.floor(((idx + 1) / totalVocab) * 25);
+              await updateProgress(
+                `Processing vocabulary ${idx + 1} of ${totalVocab}: ${vocabData.word}`,
+                vocabProgress,
+              );
+
+              let vocab = await ctx.db.query.vocabularies.findFirst({
+                where: and(
+                  eq(vocabularies.lemma, vocabData.lemma),
+                  eq(vocabularies.learningSpaceId, entry.learningSpaceId!),
+                ),
+              });
+
+              if (!vocab) {
+                const vocabId = crypto.randomUUID();
+                const imageKey = `vocab/${vocabId}/image.png`;
+                const audioKey = `vocab/${vocabId}/audio.mp3`;
+
+                try {
+                  const imageUrl = await generateImage({
+                    prompt: vocabData.imagePrompt,
+                  });
+                  await uploadFromUrl(imageKey, imageUrl, "image/png");
+
+                  const audioBuffer = await generateAudio(
+                    vocabData.exampleSentence,
+                  );
+                  await uploadFromBuffer(audioKey, audioBuffer, "audio/mpeg");
+
+                  [vocab] = await ctx.db
+                    .insert(vocabularies)
+                    .values({
+                      id: vocabId,
+                      learningSpaceId: entry.learningSpaceId,
+                      word: vocabData.word,
+                      lemma: vocabData.lemma,
+                      translation: vocabData.translation,
+                      wordKind: vocabData.kind,
+                      sex: vocabData.sex,
+                      exampleSentence: vocabData.exampleSentence,
+                      exampleSentenceTranslation:
+                        vocabData.exampleSentenceTranslation,
+                      exampleAudioKey: audioKey,
+                      imageKey,
+                    })
+                    .returning();
+                  addedCount++;
+                  addedWords.push(vocabData.word);
+                } catch (err) {
+                  console.error(
+                    `Failed to process vocab ${vocabData.word}:`,
+                    err,
+                  );
+                  continue;
+                }
+              } else {
+                skippedCount++;
+                skippedWords.push(vocabData.word);
+              }
+
+              if (vocab) {
+                await ctx.db
+                  .insert(userVocabProgress)
+                  .values({
+                    userId: ctx.session.user.id,
+                    learningSpaceId: entry.learningSpaceId!,
+                    vocabId: vocab.id,
+                  })
+                  .onConflictDoNothing();
+              }
+            }
+            console.log(
+              `[Vocab] Finished processing. Total: ${totalVocab}, Added: ${addedCount} (${addedWords.join(", ")}), Skipped: ${skippedCount} (${skippedWords.join(", ")})`,
+            );
+          }
+
+          // 4. Finalize
+          await updateProgress("Finalizing...", 95);
+          await ctx.db
+            .update(diaryEntries)
+            .set({
+              processed: true,
+              processingStatus: "Completed",
+              processingProgress: 100,
+            })
+            .where(eq(diaryEntries.id, entry.id));
+
+          ee.emit("progress", {
+            diaryEntryId: input.diaryEntryId,
+            status: "Completed",
+            progress: 100,
+            storyId,
+          });
+        } catch (err) {
+          console.error("Pipeline failed:", err);
+          ee.emit("progress", {
+            diaryEntryId: input.diaryEntryId,
+            status: "error",
+            progress: 0,
+            error: err instanceof Error ? err.message : "Unknown error",
+          });
+        } finally {
+          activeProcesses.delete(processId);
         }
-      }
+      };
 
-      // 6. Mark entry as processed
-      await ctx.db
-        .update(diaryEntries)
-        .set({ processed: true })
-        .where(eq(diaryEntries.id, entry.id));
+      void run();
+      return { status: "started" };
+    }),
 
-      return { storyId };
+  processProgress: protectedProcedure
+    .input(z.object({ diaryEntryId: z.string().uuid() }))
+    .subscription(({ input }) => {
+      return observable<{
+        status: string;
+        progress: number;
+        storyId?: string;
+        error?: string;
+      }>((emit) => {
+        const onProgress = (data: any) => {
+          if (data.diaryEntryId === input.diaryEntryId) {
+            emit.next(data);
+          }
+        };
+
+        ee.on("progress", onProgress);
+        return () => {
+          ee.off("progress", onProgress);
+        };
+      });
     }),
 
   getStats: protectedProcedure.query(async ({ ctx }) => {

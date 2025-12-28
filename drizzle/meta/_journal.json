@@ -43,6 +43,13 @@
       "when": 1766922631570,
       "tag": "0005_sharp_black_bird",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1766940925151,
+      "tag": "0006_powerful_lizard",
+      "breakpoints": true
     }
   ]
 }

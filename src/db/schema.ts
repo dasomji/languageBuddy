@@ -29,6 +29,8 @@ export const diaryEntries = pgTable("diary_entries", {
   targetLanguage: text("target_language").notNull(),
   level: text("level").notNull(), // beginner, A1, A2
   processed: boolean("processed").notNull().default(false),
+  processingStatus: text("processing_status"),
+  processingProgress: integer("processing_progress").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
