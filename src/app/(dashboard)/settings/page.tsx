@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -68,7 +75,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -93,7 +100,7 @@ export default function SettingsPage() {
           <CardContent>
             <div className="space-y-4">
               {spaces?.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   No learning spaces created yet.
                 </p>
               ) : (
@@ -104,19 +111,19 @@ export default function SettingsPage() {
                       className="flex items-center justify-between rounded-lg border p-4"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="rounded-full bg-muted p-2">
-                          <Globe className="h-5 w-5 text-muted-foreground" />
+                        <div className="bg-muted rounded-full p-2">
+                          <Globe className="text-muted-foreground h-5 w-5" />
                         </div>
                         <div>
-                          <p className="font-medium">
+                          <div className="font-medium">
                             {space.name}
                             {activeSpace?.id === space.id && (
                               <Badge className="ml-2" variant="secondary">
                                 Active
                               </Badge>
                             )}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
+                          </div>
+                          <p className="text-muted-foreground text-sm">
                             {space.targetLanguage} ({space.level}) • Native:{" "}
                             {space.nativeLanguage}
                           </p>
@@ -150,7 +157,7 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label htmlFor="audio-delay">Audio Playback Delay (ms)</Label>
-                <span className="text-sm font-medium text-muted-foreground">
+                <span className="text-muted-foreground text-sm font-medium">
                   {(audioDelay / 1000).toFixed(1)}s
                 </span>
               </div>
@@ -162,7 +169,7 @@ export default function SettingsPage() {
                 value={[audioDelay]}
                 onValueChange={(val) => setAudioDelay(val[0] ?? 1000)}
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Wait time before audio starts playing when you turn a page.
               </p>
             </div>
@@ -175,8 +182,9 @@ export default function SettingsPage() {
                 onChange={(e) => setImageStyle(e.target.value)}
                 placeholder="e.g. children book watercolors, oil painting, studio Ghibli"
               />
-              <p className="text-xs text-muted-foreground">
-                The visual style used for generating images in your stories and vocabulary.
+              <p className="text-muted-foreground text-xs">
+                The visual style used for generating images in your stories and
+                vocabulary.
               </p>
             </div>
           </CardContent>
@@ -201,7 +209,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Delete Account</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Permanently remove your account and all associated data.
                 </p>
               </div>
@@ -215,4 +223,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
