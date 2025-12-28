@@ -288,7 +288,7 @@ export default function VodexPage() {
         </div>
 
         {/* Right Column: Preview */}
-        <div className="bg-card hidden flex-1 overflow-y-auto rounded-xl border sm:block">
+        <div className="bg-card hidden flex-1 overflow-y-clip rounded-xl border sm:block">
           {selectedVocab ? (
             <div className="p-6">
               <div className="mb-6 flex items-start justify-between">
@@ -318,39 +318,30 @@ export default function VodexPage() {
                   >
                     {selectedVocab.wordKind}
                   </Badge>
-                  {selectedVocab.exampleAudioKey && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        handlePlayAudio(selectedVocab.exampleAudioKey!)
-                      }
-                    >
-                      <Play className="mr-2 h-4 w-4" />
-                      Listen
-                    </Button>
-                  )}
                 </div>
               </div>
 
               <div className="grid gap-8 md:grid-cols-2">
                 <div className="space-y-6">
-                  <div>
-                    <Label className="text-muted-foreground text-sm tracking-wider uppercase">
-                      Lemma / Base Form
-                    </Label>
-                    <p className="text-lg font-medium">{selectedVocab.lemma}</p>
-                  </div>
-
                   {selectedVocab.exampleSentence && (
                     <div>
-                      <Label className="text-muted-foreground text-sm tracking-wider uppercase">
-                        Example Sentence
-                      </Label>
                       <div className="bg-muted mt-2 rounded-lg p-4">
-                        <p className="text-lg leading-relaxed italic">
-                          &quot;{selectedVocab.exampleSentence}&quot;
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-lg leading-relaxed italic">
+                            &quot;{selectedVocab.exampleSentence}&quot;
+                          </p>
+                          {selectedVocab.exampleAudioKey && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handlePlayAudio(selectedVocab.exampleAudioKey!)
+                              }
+                            >
+                              <Play className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                         {selectedVocab.exampleSentenceTranslation && (
                           <p className="text-muted-foreground mt-2 border-t pt-2 text-sm">
                             {selectedVocab.exampleSentenceTranslation}
@@ -361,17 +352,14 @@ export default function VodexPage() {
                   )}
                 </div>
 
-                <div className="space-y-4">
-                  <Label className="text-muted-foreground text-sm tracking-wider uppercase">
-                    Visual Memory
-                  </Label>
+                <div className="flex w-full justify-center">
                   {selectedVocab.imageKey ? (
-                    <div className="overflow-hidden rounded-xl border shadow-sm">
+                    <div className="aspect-square max-h-[240px] overflow-hidden rounded-xl border shadow-sm lg:max-h-full">
                       <div className="relative aspect-square w-full">
                         <PresignedImage
                           src={selectedVocab.imageKey}
                           alt={selectedVocab.word}
-                          className="h-full w-full object-cover"
+                          className="object-fit h-full w-full object-scale-down"
                         />
                       </div>
                     </div>
@@ -459,21 +447,29 @@ export default function VodexPage() {
                   {selectedVocab?.translation}
                 </p>
               </div>
-              <div>
-                <Label className="text-muted-foreground text-xs tracking-wider uppercase">
-                  Lemma
-                </Label>
-                <p className="text-base">{selectedVocab?.lemma}</p>
-              </div>
+
               {selectedVocab?.exampleSentence && (
                 <div>
                   <Label className="text-muted-foreground text-xs tracking-wider uppercase">
                     Example Sentence
                   </Label>
                   <div className="bg-muted mt-1 rounded-lg p-3">
-                    <p className="text-base italic">
-                      &quot;{selectedVocab.exampleSentence}&quot;
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-base italic">
+                        &quot;{selectedVocab.exampleSentence}&quot;
+                      </p>
+                      {selectedVocab?.exampleAudioKey && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handlePlayAudio(selectedVocab.exampleAudioKey!)
+                          }
+                        >
+                          <Play className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                     {selectedVocab.exampleSentenceTranslation && (
                       <p className="text-muted-foreground mt-1 border-t pt-1 text-xs">
                         {selectedVocab.exampleSentenceTranslation}
@@ -481,19 +477,6 @@ export default function VodexPage() {
                     )}
                   </div>
                 </div>
-              )}
-              {selectedVocab?.exampleAudioKey && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() =>
-                    handlePlayAudio(selectedVocab.exampleAudioKey!)
-                  }
-                >
-                  <Play className="mr-2 h-4 w-4" />
-                  Listen to Example
-                </Button>
               )}
             </div>
             <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl border">
