@@ -38,11 +38,13 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { useRouter } from "next/navigation";
+import { useSidebar } from "~/components/ui/sidebar";
 
 export function LearningSpaceSwitcher() {
   const [open, setOpen] = React.useState(false);
   const [showNewSpaceDialog, setShowNewSpaceDialog] = React.useState(false);
   const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const utils = api.useUtils();
   const { data: spaces = [] } = api.learningSpace.list.useQuery();
@@ -57,6 +59,7 @@ export function LearningSpaceSwitcher() {
       utils.vodex.getStats.invalidate();
       router.refresh();
       setOpen(false);
+      if (isMobile) setOpenMobile(false);
     },
   });
 

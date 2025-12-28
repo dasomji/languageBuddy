@@ -13,6 +13,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  useSidebar,
 } from "~/components/ui/sidebar";
 import { LearningSpaceSwitcher } from "./learning-space-switcher";
 
@@ -26,11 +27,18 @@ const navigation = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   return (
     <Sidebar>
       <SidebarHeader className="border-b flex flex-col gap-4 p-4">
-        <Link href="/" className="flex items-center gap-2">
+        <Link 
+          href="/" 
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => {
+            if (isMobile) setOpenMobile(false);
+          }}
+        >
           <h1 className="text-xl font-bold">LanguageBuddy</h1>
         </Link>
         <LearningSpaceSwitcher />
@@ -50,6 +58,9 @@ export function AppSidebar() {
                       asChild
                       isActive={isActive}
                       tooltip={item.name}
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
                     >
                       <Link href={item.href}>
                         <item.icon className="h-5 w-5" />
