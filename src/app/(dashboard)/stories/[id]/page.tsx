@@ -75,20 +75,28 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
       updateProgress.mutate({
         storyId: storyId,
         currentPage: page,
-        completed: page === totalPages,
       });
-
-      if (page === totalPages) {
-        setShowCompletion(true);
-        setIsPlaying(false);
-      }
     },
     [totalPages, storyId, updateProgress],
   );
 
+  const handleFinish = useCallback(() => {
+    updateProgress.mutate({
+      storyId: storyId,
+      currentPage: totalPages,
+      completed: true,
+    });
+    setShowCompletion(true);
+    setIsPlaying(false);
+  }, [storyId, totalPages, updateProgress]);
+
   const nextPage = useCallback(() => {
-    goToPage(currentPage + 1);
-  }, [currentPage, goToPage]);
+    if (currentPage === totalPages) {
+      handleFinish();
+    } else {
+      goToPage(currentPage + 1);
+    }
+  }, [currentPage, totalPages, goToPage, handleFinish]);
 
   const prevPage = useCallback(() => {
     goToPage(currentPage - 1);
@@ -266,10 +274,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
           </span>
         </div>
 
-        <Button
-          variant={isLastPage ? "default" : "outline"}
-          onClick={isLastPage ? () => setShowCompletion(true) : nextPage}
-        >
+        <Button variant={isLastPage ? "default" : "outline"} onClick={nextPage}>
           {isLastPage ? (
             <>
               <CheckCircle className="mr-2 h-4 w-4" />
