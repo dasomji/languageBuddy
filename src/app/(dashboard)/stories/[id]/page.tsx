@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, use } from "react";
+import { useState, useEffect, useCallback, use, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "~/trpc/react";
@@ -29,7 +29,11 @@ import {
   X,
   CheckCircle,
   RotateCcw,
+  Volume2,
 } from "lucide-react";
+import { type RouterOutputs } from "~/trpc/react";
+
+type Vocab = RouterOutputs["vodex"]["lookup"];
 
 interface StoryReaderPageProps {
   params: Promise<{ id: string }>;
@@ -42,12 +46,16 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [vocabData, setVocabData] = useState<Record<string, Vocab>>({});
+  const [failedWords, setFailedWords] = useState<Set<string>>(new Set());
+  const [isPreloadingVocab, setIsPreloadingVocab] = useState(false);
 
   const storyId = resolvedParams.id;
   const { data: story, isLoading } = api.story.getById.useQuery({
     id: storyId,
   });
 
+  const utils = api.useUtils();
   const { data: settings } = api.settings.get.useQuery();
 
   const updateProgress = api.story.updateProgress.useMutation();
@@ -56,6 +64,54 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   const totalPages = pages.length;
   const currentPageData = pages.find((p) => p.pageNumber === currentPage);
   const isLastPage = currentPage === totalPages;
+
+  // Extract all unique words from the story
+  const allWords = useMemo(() => {
+    if (!story) return [];
+    const text = story.pages.map((p) => p.textTarget).join(" ");
+    const words = text.split(/\s+/);
+    const uniqueWords = Array.from(
+      new Set(words.map((w) => w.replace(/[.,!?;:]/g, "").trim())),
+    ).filter((w) => w.length > 0);
+    return uniqueWords;
+  }, [story]);
+
+  // Preload vocab data for all words
+  useEffect(() => {
+    if (allWords.length > 0 && !isPreloadingVocab) {
+      const fetchVocab = async () => {
+        setIsPreloadingVocab(true);
+        const results = await Promise.all(
+          allWords.map(async (word) => {
+            try {
+              const data = await utils.vodex.lookup.fetch({ word });
+              return { word, data, success: !!data };
+            } catch (error) {
+              // Actual network or server errors still go here
+              return { word, data: null, success: false };
+            }
+          }),
+        );
+
+        const newVocabData: Record<string, Vocab> = {};
+        const newFailedWords = new Set<string>();
+
+        results.forEach((res) => {
+          if (res.success && res.data) {
+            newVocabData[res.word] = res.data;
+          } else {
+            newFailedWords.add(res.word);
+          }
+        });
+
+        setVocabData(newVocabData);
+        setFailedWords(newFailedWords);
+        setIsPreloadingVocab(false);
+      };
+
+      void fetchVocab();
+    }
+  }, [allWords, utils.vodex.lookup]);
 
   // Auto-play audio when page changes (if enabled)
   useEffect(() => {
@@ -117,6 +173,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   };
 
   const handleWordClick = (word: string) => {
+    if (failedWords.has(word)) return; // Not clickable if it failed lookup (e.g. name)
     setSelectedWord(word);
   };
 
@@ -136,22 +193,32 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
     !!settings,
   );
 
+  const selectedVocab = selectedWord ? vocabData[selectedWord] : null;
+
   // Parse text into clickable words
   const renderTextWithClickableWords = (text: string) => {
     const words = text.split(/\s+/);
     return (
-      <p className="text-lg leading-relaxed">
+      <p className="text-2xl leading-relaxed sm:text-3xl">
         {words.map((word, index) => {
           const cleanWord = word.replace(/[.,!?;:]/g, "");
+          const isClickable = !failedWords.has(cleanWord) && vocabData[cleanWord];
+
           return (
             <span key={index} className="inline">
-              <button
-                type="button"
-                onClick={() => handleWordClick(cleanWord)}
-                className="hover:bg-primary/20 inline-block cursor-pointer rounded px-1 transition-colors"
-              >
-                {word}
-              </button>
+              {isClickable ? (
+                <button
+                  type="button"
+                  onClick={() => handleWordClick(cleanWord)}
+                  className="hover:bg-primary/20 inline-block cursor-pointer rounded px-1 transition-colors"
+                >
+                  {word}
+                </button>
+              ) : (
+                <span className="inline-block px-1 text-muted-foreground/80">
+                  {word}
+                </span>
+              )}
               {index < words.length - 1 ? " " : ""}
             </span>
           );
@@ -332,17 +399,93 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
 
       {/* Word Click Dialog */}
       <Dialog open={!!selectedWord} onOpenChange={() => setSelectedWord(null)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{selectedWord}</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-muted-foreground text-center">
-              Word lookup feature coming soon! For now, visit the VoDex to see
-              this word&apos;s entry.
-            </p>
-          </div>
-          <div className="flex justify-end">
+        <DialogContent className="max-w-[95vw] sm:max-w-lg">
+          {selectedVocab ? (
+            <>
+              <DialogHeader>
+                <div className="flex items-center justify-between pr-8">
+                  <div>
+                    <DialogTitle className="text-3xl font-bold">
+                      {selectedVocab.word}
+                    </DialogTitle>
+                    <p className="text-muted-foreground text-sm italic">
+                      {selectedVocab.lemma !== selectedVocab.word &&
+                        `(${selectedVocab.lemma}) • `}
+                      {selectedVocab.wordKind}
+                      {selectedVocab.sex &&
+                        selectedVocab.sex !== "none" &&
+                        ` • ${selectedVocab.sex}`}
+                    </p>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="grid gap-6 py-4">
+                {/* Image */}
+                {selectedVocab.imageKey && (
+                  <div className="relative aspect-square overflow-hidden rounded-xl border">
+                    <PresignedImage
+                      src={selectedVocab.imageKey}
+                      alt={selectedVocab.word}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Translation & Definition */}
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                      Translation
+                    </h4>
+                    <p className="text-2xl font-semibold">
+                      {selectedVocab.translation}
+                    </p>
+                  </div>
+
+                  {selectedVocab.definition && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                        Definition
+                      </h4>
+                      <p className="text-lg">{selectedVocab.definition}</p>
+                    </div>
+                  )}
+
+                  {selectedVocab.exampleSentence && (
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <h4 className="mb-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                        Example
+                      </h4>
+                      <div className="space-y-2">
+                        <p className="text-xl leading-snug font-medium">
+                          {selectedVocab.exampleSentence}
+                        </p>
+                        <p className="text-muted-foreground italic">
+                          {selectedVocab.exampleSentenceTranslation}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Audio */}
+                {selectedVocab.exampleAudioKey && (
+                  <div className="flex justify-center pt-2">
+                    <AudioPlayer
+                      src={`/api/storage/presigned?key=${encodeURIComponent(selectedVocab.exampleAudioKey)}&redirect=true`}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="py-12 text-center">
+              <div className="border-primary mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2" />
+              <p className="text-muted-foreground">Loading word details...</p>
+            </div>
+          )}
+          <div className="flex justify-end border-t pt-4">
             <Button variant="outline" onClick={() => setSelectedWord(null)}>
               Close
             </Button>

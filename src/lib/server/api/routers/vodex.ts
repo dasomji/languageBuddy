@@ -15,8 +15,39 @@ import { generateAudio } from "~/lib/server/ai/elevenlabs";
 import { uploadFromBuffer, uploadFromUrl } from "~/lib/server/storage";
 import { observable } from "@trpc/server/observable";
 import { ee, EVENTS } from "~/lib/server/api/events";
+import { TRPCError } from "@trpc/server";
 
 export const vodexRouter = createTRPCRouter({
+  lookup: protectedProcedure
+    .input(z.object({ word: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const settings = await ctx.db.query.userSettings.findFirst({
+        where: eq(userSettings.userId, ctx.session.user.id),
+      });
+
+      if (!settings?.activeLearningSpaceId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No active learning space found",
+        });
+      }
+
+      const word = input.word.trim();
+
+      const vocab = await ctx.db.query.vocabularies.findFirst({
+        where: and(
+          eq(vocabularies.learningSpaceId, settings.activeLearningSpaceId),
+          eq(vocabularies.lemma, word),
+        ),
+      });
+
+      if (!vocab) {
+        return null;
+      }
+
+      return vocab;
+    }),
+
   getAll: protectedProcedure
     .input(
       z
