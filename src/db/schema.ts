@@ -161,3 +161,42 @@ export const learningSpaces = pgTable("learning_spaces", {
   level: text("level").notNull(), // beginner, A1, A2, etc.
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const vodexPackages = pgTable("vodex_packages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  learningSpaceId: uuid("learning_space_id")
+    .notNull()
+    .references(() => learningSpaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  source: text("source").notNull(), // 'diary' | 'topic'
+  sourceId: uuid("source_id"), // diaryEntryId or null for topic
+  miniStoryId: uuid("mini_story_id").references(() => miniStories.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const vocabToPackage = pgTable(
+  "vocab_to_package",
+  {
+    vocabId: uuid("vocab_id")
+      .notNull()
+      .references(() => vocabularies.id, { onDelete: "cascade" }),
+    packageId: uuid("package_id")
+      .notNull()
+      .references(() => vodexPackages.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.vocabId, table.packageId],
+    }),
+  }),
+);

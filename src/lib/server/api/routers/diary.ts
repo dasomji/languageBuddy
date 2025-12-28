@@ -8,6 +8,8 @@ import {
   userVocabProgress,
   userSettings,
   learningSpaces,
+  vodexPackages,
+  vocabToPackage,
 } from "~/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import {
@@ -329,6 +331,20 @@ export const diaryRouter = createTRPCRouter({
               `[Vocab] Extracted ${vocabResult.vocabularies.length} words from AI: ${vocabResult.vocabularies.map((v) => v.word).join(", ")}`,
             );
 
+            // Create a package for this diary entry
+            const [pack] = await ctx.db
+              .insert(vodexPackages)
+              .values({
+                userId: ctx.session.user.id,
+                learningSpaceId: entry.learningSpaceId!,
+                name: `Diary: ${new Date(entry.createdAt).toLocaleDateString()}`,
+                description: `Vocabulary extracted from diary entry on ${new Date(entry.createdAt).toLocaleString()}`,
+                source: "diary",
+                sourceId: entry.id,
+                miniStoryId: storyId || null,
+              })
+              .returning();
+
             let addedCount = 0;
             let skippedCount = 0;
             const addedWords: string[] = [];
@@ -406,6 +422,17 @@ export const diaryRouter = createTRPCRouter({
                     vocabId: vocab.id,
                   })
                   .onConflictDoNothing();
+
+                // Link vocab to the diary package
+                if (pack) {
+                  await ctx.db
+                    .insert(vocabToPackage)
+                    .values({
+                      vocabId: vocab.id,
+                      packageId: pack.id,
+                    })
+                    .onConflictDoNothing();
+                }
               }
             }
             console.log(

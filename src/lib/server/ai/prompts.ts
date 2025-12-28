@@ -129,6 +129,53 @@ Return the result as a single JSON object with the following structure:
   `.trim();
 }
 
+export function getVocabPackPrompt(
+  topic: string,
+  targetLanguage: string,
+  level: string,
+  backgroundColor = "#FFFFFF",
+) {
+  return `
+You are an expert language teacher.
+I will provide you with a topic. Your task is to generate between 20 and 30 unique, highly relevant vocabulary words for that topic in ${targetLanguage} at language level "${level}".
+- Include a variety of parts of speech: nouns, verbs, adjectives, etc.
+- For each word:
+  - word: the word (with an article if it's a noun, e.g., "la pomme").
+  - lemma: the dictionary form (e.g., "manger").
+  - translation: translation into English.
+  - kind: part of speech (noun, verb, adjective, adverb, etc.).
+  - sex: for nouns, specify "masculine", "feminine", or "neuter". Otherwise use "none".
+  - exampleSentence: a simple, separate example sentence using the word at level "${level}".
+  - exampleSentenceTranslation: translation of the example sentence.
+  - imagePrompt: a mnemonic-cued image prompt for the word:
+    - Fire-themed for masculine words.
+    - Ice-themed for feminine words.
+    - Neutral/Educational for others.
+    - Use background color "${backgroundColor}".
+
+Topic:
+"""
+${topic}
+"""
+
+Return the result as a single JSON object with the following structure:
+{
+  "vocabularies": [
+    {
+      "word": "string",
+      "lemma": "string",
+      "translation": "string",
+      "kind": "string",
+      "sex": "masculine | feminine | neuter | none",
+      "exampleSentence": "string",
+      "exampleSentenceTranslation": "string",
+      "imagePrompt": "string"
+    }
+  ]
+}
+  `.trim();
+}
+
 export async function generateMiniStory(
   diaryEntry: string,
   targetLanguage: string,
@@ -194,6 +241,40 @@ export async function extractVocabularies(
 
   throw new Error(
     `Failed to extract vocabularies after ${retries + 1} attempts: ${lastError instanceof Error ? lastError.message : "Unknown error"}`,
+  );
+}
+
+export async function generateVocabPack(
+  topic: string,
+  targetLanguage: string,
+  level: string,
+  options?: {
+    backgroundColor?: string;
+    retries?: number;
+  },
+): Promise<VocabExtractionResult> {
+  const { backgroundColor, retries = 2 } = options ?? {};
+  const prompt = getVocabPackPrompt(
+    topic,
+    targetLanguage,
+    level,
+    backgroundColor,
+  );
+
+  let lastError: unknown;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const result = await generateStructuredJSON<unknown>(prompt);
+      const validated = VocabExtractionResultSchema.parse(result);
+      return validated;
+    } catch (error) {
+      console.error(`Attempt ${i + 1} for VocabPack generation failed:`, error);
+      lastError = error;
+    }
+  }
+
+  throw new Error(
+    `Failed to generate vocabulary pack after ${retries + 1} attempts: ${lastError instanceof Error ? lastError.message : "Unknown error"}`,
   );
 }
 

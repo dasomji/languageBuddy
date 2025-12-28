@@ -4,8 +4,9 @@ import {
   miniStories,
   miniStoryPages,
   userSettings,
+  vodexPackages,
 } from "~/db/schema";
-import { eq, desc, and, asc } from "drizzle-orm";
+import { eq, desc, and, asc, sql } from "drizzle-orm";
 
 export const storyRouter = createTRPCRouter({
   getAll: protectedProcedure
@@ -38,14 +39,28 @@ export const storyRouter = createTRPCRouter({
         limit: limit + 1,
       });
 
+      // Get package IDs for each story
+      const storiesWithPackages = await Promise.all(
+        stories.map(async (story) => {
+          const pkg = await ctx.db.query.vodexPackages.findFirst({
+            where: and(
+              eq(vodexPackages.miniStoryId, story.id),
+              eq(vodexPackages.userId, ctx.session.user.id),
+            ),
+            columns: { id: true },
+          });
+          return { ...story, packageId: pkg?.id };
+        }),
+      );
+
       let nextCursor: string | undefined = undefined;
       if (stories.length > limit) {
-        const nextItem = stories.pop();
+        const nextItem = storiesWithPackages.pop();
         nextCursor = nextItem?.id;
       }
 
       return {
-        stories,
+        stories: storiesWithPackages,
         nextCursor,
       };
     }),
