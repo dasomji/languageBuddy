@@ -14,10 +14,7 @@ import { generateImage } from "~/lib/server/ai/fal";
 import { generateAudio } from "~/lib/server/ai/elevenlabs";
 import { uploadFromBuffer, uploadFromUrl } from "~/lib/server/storage";
 import { observable } from "@trpc/server/observable";
-import { EventEmitter } from "events";
-
-// Global event emitter for progress updates
-const ee = new EventEmitter();
+import { ee, EVENTS } from "~/lib/server/api/events";
 
 export const vodexRouter = createTRPCRouter({
   getAll: protectedProcedure
@@ -269,6 +266,11 @@ export const vodexRouter = createTRPCRouter({
         throw new Error("Failed to create package");
       }
 
+      ee.emit(EVENTS.STATS_UPDATED, {
+        userId: ctx.session.user.id,
+        learningSpaceId: space.id,
+      });
+
       // 2. Start background processing
       const run = async () => {
         try {
@@ -387,6 +389,11 @@ export const vodexRouter = createTRPCRouter({
 
           // Mark as completed
           await updatePackageProgress(totalWords, totalWords, "completed");
+
+          ee.emit(EVENTS.STATS_UPDATED, {
+            userId: ctx.session.user.id,
+            learningSpaceId: space.id,
+          });
         } catch (err) {
           console.error("Package generation failed:", err);
           await ctx.db

@@ -4,6 +4,7 @@ import { vodexRouter } from "~/lib/server/api/routers/vodex";
 import { storyRouter } from "~/lib/server/api/routers/story";
 import { settingsRouter } from "~/lib/server/api/routers/settings";
 import { learningSpaceRouter } from "~/lib/server/api/routers/learning-space";
+import { statsRouter } from "~/lib/server/api/routers/stats";
 import { createCallerFactory, createTRPCRouter } from "~/lib/server/api/trpc";
 
 /**
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   story: storyRouter,
   settings: settingsRouter,
   learningSpace: learningSpaceRouter,
+  stats: statsRouter,
 });
 
 // export type definition of API

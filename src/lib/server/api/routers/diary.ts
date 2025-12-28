@@ -20,10 +20,7 @@ import { generateImage } from "~/lib/server/ai/fal";
 import { generateAudio } from "~/lib/server/ai/elevenlabs";
 import { uploadFromBuffer, uploadFromUrl } from "~/lib/server/storage";
 import { observable } from "@trpc/server/observable";
-import { EventEmitter } from "events";
-
-// Global event emitter for progress updates
-const ee = new EventEmitter();
+import { ee, EVENTS } from "~/lib/server/api/events";
 
 // Track currently running processes to avoid duplicates
 const activeProcesses = new Set<string>();
@@ -74,6 +71,11 @@ export const diaryRouter = createTRPCRouter({
       if (!entry) {
         throw new Error("Failed to create diary entry");
       }
+
+      ee.emit(EVENTS.STATS_UPDATED, {
+        userId: ctx.session.user.id,
+        learningSpaceId: space.id,
+      });
 
       // Note: AI processing should be triggered separately by the client
       // using the processEntry mutation to avoid server-side call issues
@@ -472,6 +474,11 @@ export const diaryRouter = createTRPCRouter({
               processingProgress: 100,
             })
             .where(eq(diaryEntries.id, entry.id));
+
+          ee.emit(EVENTS.STATS_UPDATED, {
+            userId: ctx.session.user.id,
+            learningSpaceId: entry.learningSpaceId,
+          });
 
           ee.emit("progress", {
             diaryEntryId: input.diaryEntryId,

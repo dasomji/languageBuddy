@@ -23,19 +23,52 @@ import {
   useSidebar,
 } from "~/components/ui/sidebar";
 import { LearningSpaceSwitcher } from "./learning-space-switcher";
-
-const navigation = [
-  { name: "Dashboard", href: "/", icon: Grid },
-  { name: "Diary", href: "/diary", icon: Calendar },
-  { name: "VoDex", href: "/vodex", icon: Library },
-  { name: "Add Word packages", href: "/vodex/packages", icon: PackagePlus },
-  { name: "Stories", href: "/stories", icon: BookOpen },
-  { name: "Settings", href: "/settings", icon: Settings },
-];
+import { api } from "~/trpc/react";
+import { useState, useEffect } from "react";
+import { Badge } from "~/components/ui/badge";
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
+
+  const { data: initialStats } = api.stats.getStats.useQuery();
+  const [stats, setStats] = useState(initialStats);
+
+  api.stats.getStatsSubscription.useSubscription(undefined, {
+    onData: (data) => {
+      setStats(data);
+    },
+  });
+
+  useEffect(() => {
+    if (initialStats) {
+      setStats(initialStats);
+    }
+  }, [initialStats]);
+
+  const navigation = [
+    { name: "Dashboard", href: "/", icon: Grid },
+    {
+      name: "Diary",
+      href: "/diary",
+      icon: Calendar,
+      count: stats?.diaryEntries,
+    },
+    { name: "VoDex", href: "/vodex", icon: Library, count: stats?.vocabs },
+    {
+      name: "Add Word packages",
+      href: "/vodex/packages",
+      icon: PackagePlus,
+      count: stats?.wordPackages,
+    },
+    {
+      name: "Stories",
+      href: "/stories",
+      icon: BookOpen,
+      count: stats?.stories,
+    },
+    { name: "Settings", href: "/settings", icon: Settings },
+  ];
 
   return (
     <Sidebar>
@@ -71,9 +104,22 @@ export function AppSidebar() {
                         if (isMobile) setOpenMobile(false);
                       }}
                     >
-                      <Link href={item.href}>
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.name}</span>
+                      <Link
+                        href={item.href}
+                        className="flex w-full items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <item.icon className="h-5 w-5" />
+                          <span>{item.name}</span>
+                        </div>
+                        {item.count !== undefined && item.count > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="ml-auto h-5 px-1.5 text-[10px] font-medium"
+                          >
+                            {item.count}
+                          </Badge>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

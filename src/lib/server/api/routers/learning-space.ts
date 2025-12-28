@@ -3,6 +3,7 @@ import { createTRPCRouter, protectedProcedure } from "~/lib/server/api/trpc";
 import { learningSpaces, userSettings } from "~/db/schema";
 import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { ee, EVENTS } from "~/lib/server/api/events";
 
 export const learningSpaceRouter = createTRPCRouter({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -114,6 +115,11 @@ export const learningSpaceRouter = createTRPCRouter({
         });
       }
 
+      ee.emit(EVENTS.STATS_UPDATED, {
+        userId: ctx.session.user.id,
+        learningSpaceId: space.id,
+      });
+
       return { success: true };
     }),
 
@@ -149,6 +155,11 @@ export const learningSpaceRouter = createTRPCRouter({
           .set({ activeLearningSpaceId: null })
           .where(eq(userSettings.userId, ctx.session.user.id));
       }
+
+      ee.emit(EVENTS.STATS_UPDATED, {
+        userId: ctx.session.user.id,
+        learningSpaceId: settings?.activeLearningSpaceId ?? "",
+      });
 
       return { success: true };
     }),
