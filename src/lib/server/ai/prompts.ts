@@ -50,7 +50,7 @@ export function getStoryPrompt(
   diaryEntry: string,
   targetLanguage: string,
   level: string,
-  imageStyle = "children book watercolors",
+  imageStyle = "style: watercolors",
   backgroundColor = "#FFFFFF",
 ) {
   return `
@@ -86,6 +86,7 @@ Return the result as a single JSON object with the following structure:
 export function getVocabExtractionPrompt(
   translatedText: string,
   targetLanguage: string,
+  imageStyle = "style: watercolors",
   backgroundColor = "#FFFFFF",
 ) {
   return `
@@ -104,6 +105,7 @@ I will provide you with a text in ${targetLanguage}. Your task is to extract ALL
     - Fire-themed for masculine words.
     - Ice-themed for feminine words.
     - Neutral/Educational for others.
+    - Use style "${imageStyle}".
     - Use background color "${backgroundColor}".
 
 Text:
@@ -133,6 +135,7 @@ export function getVocabPackPrompt(
   topic: string,
   targetLanguage: string,
   level: string,
+  imageStyle = "style: watercolors",
   backgroundColor = "#FFFFFF",
 ) {
   return `
@@ -151,6 +154,7 @@ I will provide you with a topic. Your task is to generate between 20 and 30 uniq
     - Fire-themed for masculine words.
     - Ice-themed for feminine words.
     - Neutral/Educational for others.
+    - Use style "${imageStyle}".
     - Use background color "${backgroundColor}".
 
 Topic:
@@ -216,14 +220,16 @@ export async function extractVocabularies(
   translatedText: string,
   targetLanguage: string,
   options?: {
+    imageStyle?: string;
     backgroundColor?: string;
     retries?: number;
   },
 ): Promise<VocabExtractionResult> {
-  const { backgroundColor, retries = 2 } = options ?? {};
+  const { imageStyle, backgroundColor, retries = 2 } = options ?? {};
   const prompt = getVocabExtractionPrompt(
     translatedText,
     targetLanguage,
+    imageStyle,
     backgroundColor,
   );
 
@@ -249,15 +255,17 @@ export async function generateVocabPack(
   targetLanguage: string,
   level: string,
   options?: {
+    imageStyle?: string;
     backgroundColor?: string;
     retries?: number;
   },
 ): Promise<VocabExtractionResult> {
-  const { backgroundColor, retries = 2 } = options ?? {};
+  const { imageStyle, backgroundColor, retries = 2 } = options ?? {};
   const prompt = getVocabPackPrompt(
     topic,
     targetLanguage,
     level,
+    imageStyle,
     backgroundColor,
   );
 

@@ -255,12 +255,14 @@ export const vodexRouter = createTRPCRouter({
         throw new Error("Active learning space not found");
       }
 
+      const imageStyle = settings?.imageStyle ?? "children book watercolors";
+
       // Generate vocab pack
       const vocabResult = await generateVocabPack(
         input.topic,
         space.targetLanguage,
         space.level,
-        { backgroundColor: "#FFFFFF" },
+        { imageStyle, backgroundColor: "#FFFFFF" },
       );
 
       // Create package

@@ -324,7 +324,7 @@ export const diaryRouter = createTRPCRouter({
             const vocabResult = await extractVocabularies(
               translatedTextForVocab,
               entry.targetLanguage,
-              { backgroundColor },
+              { imageStyle, backgroundColor },
             );
 
             console.log(
