@@ -144,8 +144,8 @@ export function AudioPlayer({
           <Play className="h-4 w-4" />
         )}
       </Button>
-      <div className="flex items-center gap-2 flex-1">
-        <span className="text-xs text-muted-foreground w-10">
+      <div className="flex flex-1 items-center gap-2">
+        <span className="text-muted-foreground w-10 text-xs">
           {formatTime(currentTime)}
         </span>
         <Slider
@@ -155,7 +155,7 @@ export function AudioPlayer({
           onValueChange={handleSeek}
           className="flex-1"
         />
-        <span className="text-xs text-muted-foreground w-10">
+        <span className="text-muted-foreground w-10 text-xs">
           {formatTime(duration)}
         </span>
       </div>
@@ -182,4 +182,3 @@ export function AudioPlayer({
     </div>
   );
 }
-
