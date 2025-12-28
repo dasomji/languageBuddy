@@ -4,7 +4,13 @@ import Link from "next/link";
 import { auth } from "~/lib/auth";
 import { api, HydrateClient } from "~/trpc/server";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Calendar, BookOpen, Library } from "lucide-react";
 
 export default async function Home() {
@@ -35,47 +41,45 @@ export default async function Home() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Diary Entries</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">
+                Diary Entries
+              </CardTitle>
+              <Calendar className="text-muted-foreground h-4 w-4" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">--</div>
-              <p className="text-xs text-muted-foreground">
-                entries written
-              </p>
+              <p className="text-muted-foreground text-xs">entries written</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Stories Read</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">
+                Stories Read
+              </CardTitle>
+              <BookOpen className="text-muted-foreground h-4 w-4" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">--</div>
-              <p className="text-xs text-muted-foreground">
-                stories completed
-              </p>
+              <p className="text-muted-foreground text-xs">stories completed</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Vocabulary</CardTitle>
-              <Library className="h-4 w-4 text-muted-foreground" />
+              <Library className="text-muted-foreground h-4 w-4" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">--</div>
-              <p className="text-xs text-muted-foreground">
-                words learned
-              </p>
+              <p className="text-muted-foreground text-xs">words learned</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <Link href="/diary">
             <Card className="cursor-pointer transition-shadow hover:shadow-md">
               <CardHeader>
@@ -104,7 +108,9 @@ export default async function Home() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full" variant="outline">Browse Stories</Button>
+                <Button className="w-full" variant="outline">
+                  Browse Stories
+                </Button>
               </CardContent>
             </Card>
           </Link>
@@ -120,7 +126,9 @@ export default async function Home() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full" variant="secondary">Open VoDex</Button>
+                <Button className="w-full" variant="secondary">
+                  Open VoDex
+                </Button>
               </CardContent>
             </Card>
           </Link>
@@ -131,10 +139,12 @@ export default async function Home() {
           <Card>
             <CardHeader>
               <CardTitle>Recent Diary Entries</CardTitle>
-              <CardDescription>Your latest entries and their status</CardDescription>
+              <CardDescription>
+                Your latest entries and their status
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 No diary entries yet. Start writing to see your progress!
               </p>
             </CardContent>
@@ -145,7 +155,7 @@ export default async function Home() {
               <CardDescription>Pick up where you left off</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 No stories in progress. Browse stories to start reading!
               </p>
             </CardContent>
