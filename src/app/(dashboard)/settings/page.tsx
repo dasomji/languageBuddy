@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
+import { cn } from "~/lib/utils";
 import {
   Card,
   CardContent,
@@ -16,11 +17,64 @@ import { Label } from "~/components/ui/label";
 import { Slider } from "~/components/ui/slider";
 import { Badge } from "~/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Globe, Trash2 } from "lucide-react";
+import { Loader2, Globe, Trash2, Keyboard } from "lucide-react";
+
+function ShortcutInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [isRecording, setIsRecording] = useState(false);
+
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onChange(e.key);
+      setIsRecording(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isRecording, onChange]);
+
+  return (
+    <div className="flex items-center justify-between">
+      <Label className="text-sm">{label}</Label>
+      <Button
+        variant="outline"
+        size="sm"
+        className={cn(
+          "w-32 font-mono",
+          isRecording && "border-primary ring-primary ring-2 ring-offset-2",
+        )}
+        onClick={() => setIsRecording(true)}
+      >
+        {isRecording ? "Press a key..." : value === " " ? "Space" : value}
+      </Button>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const [audioDelay, setAudioDelay] = useState(1000);
   const [imageStyle, setImageStyle] = useState("children book watercolors");
+  const [shortcuts, setShortcuts] = useState({
+    shortcutAudioForward: "a",
+    shortcutAudioBack: "d",
+    shortcutAudioPlayPause: " ",
+    shortcutAudioStop: "s",
+    shortcutStoryNext: "ArrowRight",
+    shortcutStoryPrev: "ArrowLeft",
+    shortcutVodexNext: "ArrowDown",
+    shortcutVodexPrev: "ArrowUp",
+  });
 
   const utils = api.useUtils();
   const { data: settings, isLoading } = api.settings.get.useQuery();
@@ -52,6 +106,16 @@ export default function SettingsPage() {
     if (settings) {
       setAudioDelay(settings.audioPlaybackDelay);
       setImageStyle(settings.imageStyle);
+      setShortcuts({
+        shortcutAudioForward: settings.shortcutAudioForward ?? "a",
+        shortcutAudioBack: settings.shortcutAudioBack ?? "d",
+        shortcutAudioPlayPause: settings.shortcutAudioPlayPause ?? " ",
+        shortcutAudioStop: settings.shortcutAudioStop ?? "s",
+        shortcutStoryNext: settings.shortcutStoryNext ?? "ArrowRight",
+        shortcutStoryPrev: settings.shortcutStoryPrev ?? "ArrowLeft",
+        shortcutVodexNext: settings.shortcutVodexNext ?? "ArrowDown",
+        shortcutVodexPrev: settings.shortcutVodexPrev ?? "ArrowUp",
+      });
     }
   }, [settings]);
 
@@ -59,6 +123,7 @@ export default function SettingsPage() {
     updateSettings.mutate({
       audioPlaybackDelay: audioDelay,
       imageStyle,
+      ...shortcuts,
     });
   };
 
@@ -186,6 +251,125 @@ export default function SettingsPage() {
                 The visual style used for generating images in your stories and
                 vocabulary.
               </p>
+            </div>
+          </CardContent>
+          <CardFooter className="border-t px-6 py-4">
+            <Button onClick={handleSave} disabled={updateSettings.isPending}>
+              {updateSettings.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Save Changes
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Keyboard className="h-5 w-5" />
+              Keyboard Shortcuts
+            </CardTitle>
+            <CardDescription>
+              Customize your learning experience with keyboard controls.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">Audio Player</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ShortcutInput
+                  label="Play / Pause"
+                  value={shortcuts.shortcutAudioPlayPause}
+                  onChange={(val) =>
+                    setShortcuts((prev) => ({
+                      ...prev,
+                      shortcutAudioPlayPause: val,
+                    }))
+                  }
+                />
+                <ShortcutInput
+                  label="Stop"
+                  value={shortcuts.shortcutAudioStop}
+                  onChange={(val) =>
+                    setShortcuts((prev) => ({
+                      ...prev,
+                      shortcutAudioStop: val,
+                    }))
+                  }
+                />
+                <ShortcutInput
+                  label="Forward (1s)"
+                  value={shortcuts.shortcutAudioForward}
+                  onChange={(val) =>
+                    setShortcuts((prev) => ({
+                      ...prev,
+                      shortcutAudioForward: val,
+                    }))
+                  }
+                />
+                <ShortcutInput
+                  label="Backward (1s)"
+                  value={shortcuts.shortcutAudioBack}
+                  onChange={(val) =>
+                    setShortcuts((prev) => ({
+                      ...prev,
+                      shortcutAudioBack: val,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">Mini-Stories</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ShortcutInput
+                  label="Next Page"
+                  value={shortcuts.shortcutStoryNext}
+                  onChange={(val) =>
+                    setShortcuts((prev) => ({
+                      ...prev,
+                      shortcutStoryNext: val,
+                    }))
+                  }
+                />
+                <ShortcutInput
+                  label="Previous Page"
+                  value={shortcuts.shortcutStoryPrev}
+                  onChange={(val) =>
+                    setShortcuts((prev) => ({
+                      ...prev,
+                      shortcutStoryPrev: val,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">VoDex</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ShortcutInput
+                  label="Next Word"
+                  value={shortcuts.shortcutVodexNext}
+                  onChange={(val) =>
+                    setShortcuts((prev) => ({
+                      ...prev,
+                      shortcutVodexNext: val,
+                    }))
+                  }
+                />
+                <ShortcutInput
+                  label="Previous Word"
+                  value={shortcuts.shortcutVodexPrev}
+                  onChange={(val) =>
+                    setShortcuts((prev) => ({
+                      ...prev,
+                      shortcutVodexPrev: val,
+                    }))
+                  }
+                />
+              </div>
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4">

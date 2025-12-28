@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut";
 import { Loader2, Search, Library, Flame, Snowflake, Play } from "lucide-react";
 import { cn } from "~/lib/utils";
 
@@ -51,6 +52,8 @@ export default function VodexPage() {
   const { data: activeSpace, isLoading: isLoadingSpace } =
     api.learningSpace.getActive.useQuery();
 
+  const { data: settings } = api.settings.get.useQuery();
+
   const { data: stats } = api.vodex.getStats.useQuery(undefined, {
     enabled: !!activeSpace,
   });
@@ -63,6 +66,45 @@ export default function VodexPage() {
     {
       enabled: !!activeSpace,
     },
+  );
+
+  const handleNextWord = () => {
+    if (!vocabData?.vocabularies || !selectedVocab) return;
+    const currentIndex = vocabData.vocabularies.findIndex(
+      (v) => v.id === selectedVocab.id,
+    );
+    if (currentIndex < vocabData.vocabularies.length - 1) {
+      const next = vocabData.vocabularies[currentIndex + 1] as VocabEntry;
+      setSelectedVocab(next);
+      // Auto-scroll the list
+      const element = document.getElementById(`vocab-${next.id}`);
+      element?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  };
+
+  const handlePrevWord = () => {
+    if (!vocabData?.vocabularies || !selectedVocab) return;
+    const currentIndex = vocabData.vocabularies.findIndex(
+      (v) => v.id === selectedVocab.id,
+    );
+    if (currentIndex > 0) {
+      const prev = vocabData.vocabularies[currentIndex - 1] as VocabEntry;
+      setSelectedVocab(prev);
+      // Auto-scroll the list
+      const element = document.getElementById(`vocab-${prev.id}`);
+      element?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  };
+
+  useKeyboardShortcut(
+    settings?.shortcutVodexNext ?? "ArrowDown",
+    handleNextWord,
+    !!settings,
+  );
+  useKeyboardShortcut(
+    settings?.shortcutVodexPrev ?? "ArrowUp",
+    handlePrevWord,
+    !!settings,
   );
 
   useEffect(() => {
@@ -175,6 +217,7 @@ export default function VodexPage() {
                 {vocabData?.vocabularies.map((vocab) => (
                   <div
                     key={vocab.id}
+                    id={`vocab-${vocab.id}`}
                     onClick={() => {
                       setSelectedVocab(vocab as VocabEntry);
                       if (isMobile) {
@@ -334,6 +377,13 @@ export default function VodexPage() {
             src={activeAudio}
             autoPlay={true}
             onEnded={() => setActiveAudio(null)}
+            enableShortcuts={true}
+            shortcuts={{
+              forward: settings?.shortcutAudioForward,
+              back: settings?.shortcutAudioBack,
+              playPause: settings?.shortcutAudioPlayPause,
+              stop: settings?.shortcutAudioStop,
+            }}
           />
         </div>
       )}

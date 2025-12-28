@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
@@ -7,6 +6,7 @@ import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { PresignedImage } from "~/components/ui/presigned-image";
 import { AudioPlayer } from "~/components/ui/audio-player";
+import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut";
 import {
   Dialog,
   DialogContent,
@@ -17,12 +17,9 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Play,
-  Pause,
   CheckCircle,
   RotateCcw,
 } from "lucide-react";
-import { cn } from "~/lib/utils";
 
 interface StoryReaderPageProps {
   params: Promise<{ id: string }>;
@@ -76,7 +73,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
         setIsPlaying(false);
       }
     },
-    [totalPages, storyId, updateProgress]
+    [totalPages, storyId, updateProgress],
   );
 
   const nextPage = useCallback(() => {
@@ -109,6 +106,18 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
     setIsPlaying(false);
   }, []);
 
+  // Keyboard Shortcuts for Story Navigation
+  useKeyboardShortcut(
+    settings?.shortcutStoryNext ?? "ArrowRight",
+    nextPage,
+    !!settings,
+  );
+  useKeyboardShortcut(
+    settings?.shortcutStoryPrev ?? "ArrowLeft",
+    prevPage,
+    !!settings,
+  );
+
   // Parse text into clickable words
   const renderTextWithClickableWords = (text: string) => {
     const words = text.split(/\s+/);
@@ -121,7 +130,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
               <button
                 type="button"
                 onClick={() => handleWordClick(cleanWord)}
-                className="inline-block px-1 rounded hover:bg-primary/20 transition-colors cursor-pointer"
+                className="hover:bg-primary/20 inline-block cursor-pointer rounded px-1 transition-colors"
               >
                 {word}
               </button>
@@ -135,9 +144,9 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+          <div className="border-primary mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2" />
           <p className="text-muted-foreground">Loading story...</p>
         </div>
       </div>
@@ -146,7 +155,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
 
   if (!story) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Story not found</p>
         <Button onClick={() => router.push("/stories")}>Back to Stories</Button>
       </div>
@@ -154,67 +163,27 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   }
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex flex-col">
+    <div className="flex min-h-[calc(100vh-8rem)] flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-center">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={closeStory}>
             <X className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="flex gap-4">
             <h1 className="text-xl font-bold">{story.title}</h1>
             <Badge variant="outline">{story.languageLevel}</Badge>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-        </div>
       </div>
 
       {/* Story Content */}
-      <div className="flex-1 grid gap-6 lg:grid-cols-2">
-        {/* Image */}
-        <div className="relative aspect-[4/3] lg:aspect-auto lg:rounded-lg overflow-hidden bg-muted">
-          {currentPageData?.imageKey ? (
-            <PresignedImage
-              src={currentPageData.imageKey}
-              alt={`Page ${currentPage} illustration`}
-              className="h-full w-full object-contain"
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">No image available</p>
-            </div>
-          )}
-        </div>
-
+      <div className="grid flex-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
         {/* Text */}
-        <div className="flex flex-col justify-center space-y-6">
+        <div className="flex items-center justify-center space-y-6">
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsPlaying(!isPlaying)}
-              >
-                {isPlaying ? (
-                  <Pause className="h-4 w-4" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {isPlaying ? "Playing" : "Paused"}
-              </span>
-            </div>
-
             <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-primary">
-                {currentPageData?.textTarget}
-              </h2>
-              <p className="text-lg text-muted-foreground">
+              <p className="text-muted-foreground text-lg">
                 {currentPageData?.textNative}
               </p>
             </div>
@@ -224,23 +193,45 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
                 renderTextWithClickableWords(currentPageData.textTarget)}
             </div>
           </div>
-
-          {/* Audio Player */}
-          {currentPageData?.audioKey && (
-            <div className="border-t pt-4">
-              <AudioPlayer
-                src={`/api/storage/presigned?key=${encodeURIComponent(currentPageData.audioKey)}&redirect=true`}
-                autoPlay={isPlaying}
-                delay={settings?.audioPlaybackDelay ?? 1000}
-                onEnded={handleAudioEnded}
-              />
+        </div>
+        {/* Image */}
+        <div className="relative aspect-square max-w-[250px] overflow-hidden md:max-w-[500px] lg:rounded-lg">
+          {currentPageData?.imageKey ? (
+            <PresignedImage
+              src={currentPageData.imageKey}
+              alt={`Page ${currentPage} illustration`}
+              className="h-full w-full object-contain"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-muted-foreground">No image available</p>
             </div>
           )}
         </div>
       </div>
+      {/* Audio Player */}
+      {currentPageData?.audioKey && (
+        <div className="flex justify-center">
+          <div className="max-w-[500px]">
+            <AudioPlayer
+              src={`/api/storage/presigned?key=${encodeURIComponent(currentPageData.audioKey)}&redirect=true`}
+              autoPlay={isPlaying}
+              delay={settings?.audioPlaybackDelay ?? 1000}
+              onEnded={handleAudioEnded}
+              enableShortcuts={true}
+              shortcuts={{
+                forward: settings?.shortcutAudioForward,
+                back: settings?.shortcutAudioBack,
+                playPause: settings?.shortcutAudioPlayPause,
+                stop: settings?.shortcutAudioStop,
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Navigation */}
-      <div className="flex items-center justify-between mt-6 pt-4 border-t">
+      <div className="mt-6 flex items-center justify-between border-t pt-4">
         <Button
           variant="outline"
           onClick={prevPage}
@@ -251,22 +242,10 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
         </Button>
 
         {/* Progress dots */}
-        <div className="flex items-center gap-1">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              type="button"
-              onClick={() => goToPage(page)}
-              className={cn(
-                "h-2 w-2 rounded-full transition-colors",
-                page === currentPage
-                  ? "bg-primary"
-                  : page < currentPage
-                  ? "bg-primary/50"
-                  : "bg-muted"
-              )}
-            />
-          ))}
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
         </div>
 
         <Button
@@ -297,20 +276,20 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="text-center py-4">
+            <div className="py-4 text-center">
               <p className="text-2xl font-bold">{story.title}</p>
               <p className="text-muted-foreground">
                 You&apos;ve read this story {story.readCount ?? 0} times
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-muted rounded-lg">
+              <div className="bg-muted rounded-lg p-4 text-center">
                 <p className="text-3xl font-bold">{story.readCount ?? 0}</p>
-                <p className="text-sm text-muted-foreground">Total Reads</p>
+                <p className="text-muted-foreground text-sm">Total Reads</p>
               </div>
-              <div className="text-center p-4 bg-muted rounded-lg">
+              <div className="bg-muted rounded-lg p-4 text-center">
                 <p className="text-3xl font-bold">{totalPages}</p>
-                <p className="text-sm text-muted-foreground">Pages</p>
+                <p className="text-muted-foreground text-sm">Pages</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -349,4 +328,3 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
     </div>
   );
 }
-

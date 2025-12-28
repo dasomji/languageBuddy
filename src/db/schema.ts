@@ -134,6 +134,18 @@ export const userSettings = pgTable("user_settings", {
     () => learningSpaces.id,
     { onDelete: "set null" },
   ),
+  shortcutAudioForward: text("shortcut_audio_forward").notNull().default("a"),
+  shortcutAudioBack: text("shortcut_audio_back").notNull().default("d"),
+  shortcutAudioPlayPause: text("shortcut_audio_play_pause")
+    .notNull()
+    .default(" "),
+  shortcutAudioStop: text("shortcut_audio_stop").notNull().default("s"),
+  shortcutStoryNext: text("shortcut_story_next")
+    .notNull()
+    .default("ArrowRight"),
+  shortcutStoryPrev: text("shortcut_story_prev").notNull().default("ArrowLeft"),
+  shortcutVodexNext: text("shortcut_vodex_next").notNull().default("ArrowDown"),
+  shortcutVodexPrev: text("shortcut_vodex_prev").notNull().default("ArrowUp"),
 });
 
 export const learningSpaces = pgTable("learning_spaces", {

@@ -3,13 +3,29 @@
 import { useRef, useState, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { Slider } from "~/components/ui/slider";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Square,
+  RotateCcw,
+  RotateCw,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
+import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut";
 
 interface AudioPlayerProps {
   src: string;
   autoPlay?: boolean;
   onEnded?: () => void;
   delay?: number; // Delay in milliseconds before playing
+  shortcuts?: {
+    forward?: string;
+    back?: string;
+    playPause?: string;
+    stop?: string;
+  };
+  enableShortcuts?: boolean;
 }
 
 export function AudioPlayer({
@@ -17,6 +33,8 @@ export function AudioPlayer({
   autoPlay = false,
   onEnded,
   delay = 0,
+  shortcuts,
+  enableShortcuts = false,
 }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -100,6 +118,54 @@ export function AudioPlayer({
     }
   };
 
+  const handleStop = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.pause();
+    audio.currentTime = 0;
+    setIsPlaying(false);
+  };
+
+  const skipBack = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.max(
+        0,
+        audioRef.current.currentTime - 1,
+      );
+    }
+  };
+
+  const skipForward = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.min(
+        duration,
+        audioRef.current.currentTime + 1,
+      );
+    }
+  };
+
+  useKeyboardShortcut(
+    shortcuts?.playPause ?? " ",
+    togglePlay,
+    enableShortcuts && !!shortcuts?.playPause,
+  );
+  useKeyboardShortcut(
+    shortcuts?.stop ?? "s",
+    handleStop,
+    enableShortcuts && !!shortcuts?.stop,
+  );
+  useKeyboardShortcut(
+    shortcuts?.forward ?? "a",
+    skipForward,
+    enableShortcuts && !!shortcuts?.forward,
+  );
+  useKeyboardShortcut(
+    shortcuts?.back ?? "d",
+    skipBack,
+    enableShortcuts && !!shortcuts?.back,
+  );
+
   const handleVolumeChange = (value: number[]) => {
     const newVolume = value[0] ?? 0.5;
     setVolume(newVolume);
@@ -130,54 +196,90 @@ export function AudioPlayer({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full flex-col gap-2">
       <audio ref={audioRef} src={src} preload="metadata" />
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={togglePlay}
-        className="h-8 w-8"
-      >
-        {isPlaying ? (
-          <Pause className="h-4 w-4" />
-        ) : (
-          <Play className="h-4 w-4" />
-        )}
-      </Button>
-      <div className="flex flex-1 items-center gap-2">
-        <span className="text-muted-foreground w-10 text-xs">
-          {formatTime(currentTime)}
-        </span>
-        <Slider
-          value={[currentTime]}
-          max={duration || 100}
-          step={0.1}
-          onValueChange={handleSeek}
-          className="flex-1"
-        />
-        <span className="text-muted-foreground w-10 text-xs">
-          {formatTime(duration)}
-        </span>
-      </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleMute}
-        className="h-8 w-8"
-      >
-        {isMuted ? (
-          <VolumeX className="h-4 w-4" />
-        ) : (
-          <Volume2 className="h-4 w-4" />
-        )}
-      </Button>
-      <div className="w-20">
-        <Slider
-          value={[isMuted ? 0 : volume]}
-          max={1}
-          step={0.1}
-          onValueChange={handleVolumeChange}
-        />
+
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+        {/* Playback Controls */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={skipBack}
+            className="h-8 w-8"
+            title="Back 1s"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={togglePlay}
+            className="h-8 w-8"
+            title={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? (
+              <Pause className="h-4 w-4" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleStop}
+            className="h-8 w-8"
+            title="Stop"
+          >
+            <Square className="h-4 w-4 fill-current" />
+          </Button>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={skipForward}
+            className="h-8 w-8"
+            title="Forward 1s"
+          >
+            <RotateCw className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Seek Slider */}
+        <div className="flex min-w-[150px] flex-1 items-center gap-2">
+          <span className="text-muted-foreground w-10 text-right text-xs">
+            {formatTime(currentTime)}
+          </span>
+          <Slider
+            value={[currentTime]}
+            max={duration || 100}
+            step={0.1}
+            onValueChange={handleSeek}
+            className="flex-1"
+          />
+          <span className="text-muted-foreground w-10 text-xs">
+            {formatTime(duration)}
+          </span>
+        </div>
+
+        {/* Volume Controls */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            className="h-8 w-8"
+            title={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? (
+              <VolumeX className="h-4 w-4" />
+            ) : (
+              <Volume2 className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
