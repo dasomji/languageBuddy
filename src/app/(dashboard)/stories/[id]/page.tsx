@@ -49,6 +49,8 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   const [vocabData, setVocabData] = useState<Record<string, Vocab>>({});
   const [failedWords, setFailedWords] = useState<Set<string>>(new Set());
   const [isPreloadingVocab, setIsPreloadingVocab] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingWord, setGeneratingWord] = useState<string | null>(null);
 
   const storyId = resolvedParams.id;
   const { data: story, isLoading } = api.story.getById.useQuery({
@@ -59,6 +61,24 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   const { data: settings } = api.settings.get.useQuery();
 
   const updateProgress = api.story.updateProgress.useMutation();
+  const generateVocab = api.vodex.generateAndLookup.useMutation({
+    onSuccess: (data, variables) => {
+      if (data) {
+        setVocabData((prev) => ({ ...prev, [variables.word]: data }));
+        setFailedWords((prev) => {
+          const next = new Set(prev);
+          next.delete(variables.word);
+          return next;
+        });
+      }
+      setIsGenerating(false);
+      setGeneratingWord(null);
+    },
+    onError: () => {
+      setIsGenerating(false);
+      setGeneratingWord(null);
+    },
+  });
 
   const pages = story?.pages ?? [];
   const totalPages = pages.length;
@@ -173,7 +193,14 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   };
 
   const handleWordClick = (word: string) => {
-    if (failedWords.has(word)) return; // Not clickable if it failed lookup (e.g. name)
+    if (failedWords.has(word) && !vocabData[word]) {
+      // Trigger generation
+      setIsGenerating(true);
+      setGeneratingWord(word);
+      setSelectedWord(word);
+      generateVocab.mutate({ word, storyId });
+      return;
+    }
     setSelectedWord(word);
   };
 
@@ -202,23 +229,18 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
       <p className="text-2xl leading-relaxed sm:text-3xl">
         {words.map((word, index) => {
           const cleanWord = word.replace(/[.,!?;:]/g, "");
-          const isClickable = !failedWords.has(cleanWord) && vocabData[cleanWord];
+          const isKnown = vocabData[cleanWord];
+          const isFailed = failedWords.has(cleanWord);
 
           return (
             <span key={index} className="inline">
-              {isClickable ? (
-                <button
-                  type="button"
-                  onClick={() => handleWordClick(cleanWord)}
-                  className="hover:bg-primary/20 inline-block cursor-pointer rounded px-1 transition-colors"
-                >
-                  {word}
-                </button>
-              ) : (
-                <span className="inline-block px-1 text-muted-foreground/80">
-                  {word}
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={() => handleWordClick(cleanWord)}
+                className={`hover:bg-primary/20 inline-block cursor-pointer rounded px-1 transition-colors ${!isKnown && isFailed ? "text-muted-foreground/60 italic" : ""}`}
+              >
+                {word}
+              </button>
               {index < words.length - 1 ? " " : ""}
             </span>
           );
@@ -400,7 +422,21 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
       {/* Word Click Dialog */}
       <Dialog open={!!selectedWord} onOpenChange={() => setSelectedWord(null)}>
         <DialogContent className="max-w-[95vw] sm:max-w-lg">
-          {selectedVocab ? (
+          {isGenerating ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold">
+                  Generating VoDex Entry
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="border-primary mx-auto mb-6 h-16 w-16 animate-spin rounded-full border-b-4" />
+                <p className="text-muted-foreground">
+                  Creating mnemonic image and audio for &quot;{selectedWord}&quot;...
+                </p>
+              </div>
+            </>
+          ) : selectedVocab ? (
             <>
               <DialogHeader>
                 <div className="flex items-center justify-between pr-8">
@@ -480,10 +516,15 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
               </div>
             </>
           ) : (
-            <div className="py-12 text-center">
-              <div className="border-primary mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2" />
-              <p className="text-muted-foreground">Loading word details...</p>
-            </div>
+            <>
+              <DialogHeader>
+                <DialogTitle>Loading</DialogTitle>
+              </DialogHeader>
+              <div className="py-12 text-center">
+                <div className="border-primary mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2" />
+                <p className="text-muted-foreground">Loading word details...</p>
+              </div>
+            </>
           )}
           <div className="flex justify-end border-t pt-4">
             <Button variant="outline" onClick={() => setSelectedWord(null)}>

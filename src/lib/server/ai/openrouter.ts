@@ -15,10 +15,11 @@ export const LLM_MODEL = "google/gemini-3-flash-preview";
 export async function generateStructuredJSON<T>(
   prompt: string,
   systemPrompt = "You are a helpful language learning assistant. Always respond with valid JSON.",
+  model = LLM_MODEL,
 ): Promise<T> {
   try {
     const response = await openrouter.chat.completions.create({
-      model: LLM_MODEL,
+      model: model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },

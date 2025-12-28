@@ -9,7 +9,10 @@ import {
   learningSpaces,
 } from "~/db/schema";
 import { eq, desc, and, like, or, sql, type SQL, exists } from "drizzle-orm";
-import { generateVocabPack } from "~/lib/server/ai/prompts";
+import {
+  generateVocabPack,
+  generateSingleVocab,
+} from "~/lib/server/ai/prompts";
 import { generateImage } from "~/lib/server/ai/fal";
 import { generateAudio } from "~/lib/server/ai/elevenlabs";
 import { uploadFromBuffer, uploadFromUrl } from "~/lib/server/storage";
@@ -44,6 +47,166 @@ export const vodexRouter = createTRPCRouter({
       if (!vocab) {
         return null;
       }
+
+      return vocab;
+    }),
+
+  generateAndLookup: protectedProcedure
+    .input(
+      z.object({ word: z.string(), storyId: z.string().uuid().optional() }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const settings = await ctx.db.query.userSettings.findFirst({
+        where: eq(userSettings.userId, ctx.session.user.id),
+      });
+
+      if (!settings?.activeLearningSpaceId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No active learning space found",
+        });
+      }
+
+      const space = await ctx.db.query.learningSpaces.findFirst({
+        where: eq(learningSpaces.id, settings.activeLearningSpaceId),
+      });
+
+      if (!space) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Active learning space not found",
+        });
+      }
+
+      const word = input.word.trim();
+
+      // 1. Double check if it exists now
+      let vocab = await ctx.db.query.vocabularies.findFirst({
+        where: and(
+          eq(vocabularies.learningSpaceId, space.id),
+          eq(vocabularies.lemma, word),
+        ),
+      });
+
+      if (vocab) {
+        // Just ensure it's in user progress
+        await ctx.db
+          .insert(userVocabProgress)
+          .values({
+            userId: ctx.session.user.id,
+            learningSpaceId: space.id,
+            vocabId: vocab.id,
+          })
+          .onConflictDoNothing();
+
+        // Link to package if storyId is provided
+        if (input.storyId) {
+          const pkg = await ctx.db.query.vodexPackages.findFirst({
+            where: and(
+              eq(vodexPackages.miniStoryId, input.storyId),
+              eq(vodexPackages.userId, ctx.session.user.id),
+            ),
+          });
+          if (pkg) {
+            await ctx.db
+              .insert(vocabToPackage)
+              .values({
+                vocabId: vocab.id,
+                packageId: pkg.id,
+              })
+              .onConflictDoNothing();
+          }
+        }
+        return vocab;
+      }
+
+      // 2. Generate with AI
+      const imageStyle = settings?.imageStyle ?? "children book watercolors";
+      const vocabData = await generateSingleVocab(
+        word,
+        space.targetLanguage,
+        space.level,
+        {
+          imageStyle,
+          backgroundColor: "#FFFFFF",
+          model: "google/gemini-2.5-flash-lite",
+        },
+      );
+
+      const vocabId = crypto.randomUUID();
+      const imageKey = `vocab/${vocabId}/image.png`;
+      const audioKey = `vocab/${vocabId}/audio.mp3`;
+
+      // Generate assets
+      const [imageUrl, audioBuffer] = await Promise.all([
+        generateImage({ prompt: vocabData.imagePrompt }),
+        generateAudio(vocabData.exampleSentence),
+      ]);
+
+      await Promise.all([
+        uploadFromUrl(imageKey, imageUrl, "image/png"),
+        uploadFromBuffer(audioKey, audioBuffer, "audio/mpeg"),
+      ]);
+
+      // Save to DB
+      [vocab] = await ctx.db
+        .insert(vocabularies)
+        .values({
+          id: vocabId,
+          learningSpaceId: space.id,
+          word: vocabData.word,
+          lemma: vocabData.lemma,
+          translation: vocabData.translation,
+          definition: vocabData.definition,
+          wordKind: vocabData.kind,
+          sex: vocabData.sex,
+          exampleSentence: vocabData.exampleSentence,
+          exampleSentenceTranslation: vocabData.exampleSentenceTranslation,
+          exampleAudioKey: audioKey,
+          imageKey,
+        })
+        .returning();
+
+      if (!vocab) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to save vocabulary entry",
+        });
+      }
+
+      // Add to user progress
+      await ctx.db
+        .insert(userVocabProgress)
+        .values({
+          userId: ctx.session.user.id,
+          learningSpaceId: space.id,
+          vocabId: vocab.id,
+        })
+        .onConflictDoNothing();
+
+      // Link to story package if applicable
+      if (input.storyId) {
+        const pkg = await ctx.db.query.vodexPackages.findFirst({
+          where: and(
+            eq(vodexPackages.miniStoryId, input.storyId),
+            eq(vodexPackages.userId, ctx.session.user.id),
+          ),
+        });
+        if (pkg) {
+          await ctx.db
+            .insert(vocabToPackage)
+            .values({
+              vocabId: vocab.id,
+              packageId: pkg.id,
+            })
+            .onConflictDoNothing();
+        }
+      }
+
+      ee.emit(EVENTS.STATS_UPDATED, {
+        userId: ctx.session.user.id,
+        learningSpaceId: space.id,
+      });
 
       return vocab;
     }),

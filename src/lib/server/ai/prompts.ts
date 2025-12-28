@@ -101,7 +101,7 @@ I will provide you with a text in ${targetLanguage}. Your task is to extract ALL
   - sex: for nouns, specify "masculine", "feminine", or "neuter". Otherwise use "none".
   - exampleSentence: a simple, separate example sentence using the word.
   - exampleSentenceTranslation: translation of the example sentence.
-  - imagePrompt: a mnemonic-cued image prompt for the word:
+  - imagePrompt: a mnemonic-cued image prompt for the word based on the example sentence:
     - Fire-themed for masculine words.
     - Ice-themed for feminine words.
     - Neutral/Educational for others.
@@ -150,7 +150,7 @@ I will provide you with a topic or a description of what I'm interested in learn
   - sex: for nouns, specify "masculine", "feminine", or "neuter". Otherwise use "none".
   - exampleSentence: a simple, separate example sentence using the word at level "${level}".
   - exampleSentenceTranslation: translation of the example sentence.
-  - imagePrompt: a mnemonic-cued image prompt for the word:
+  - imagePrompt: a mnemonic-cued image prompt for the word based on the example sentence:
     - Fire-themed for masculine words.
     - Ice-themed for feminine words.
     - Neutral/Educational for others.
@@ -178,6 +178,115 @@ Return the result as a single JSON object with the following structure:
   ]
 }
   `.trim();
+}
+
+export function getSingleVocabPrompt(
+  word: string,
+  targetLanguage: string,
+  level: string,
+  imageStyle = "style: watercolors",
+  backgroundColor = "#FFFFFF",
+) {
+  return `
+You are an expert language teacher.
+I will provide you with a single word or phrase in ${targetLanguage}. Your task is to generate a complete vocabulary entry for it at language level "${level}".
+- For the word:
+  - word: the word (with an article if it's a noun, e.g., "la pomme").
+  - lemma: the dictionary form (e.g., "manger").
+  - translation: translation into English.
+  - definition: a short definition in English.
+  - kind: part of speech (noun, verb, adjective, adverb, etc.).
+  - sex: for nouns, specify "masculine", "feminine", or "neuter". Otherwise use "none".
+  - exampleSentence: a simple, separate example sentence using the word at level "${level}".
+  - exampleSentenceTranslation: translation of the example sentence.
+  - imagePrompt: a mnemonic-cued image prompt for the word based on the example sentence:
+    - Fire-themed for masculine words.
+    - Ice-themed for feminine words.
+    - Neutral/Educational for others.
+    - Use style "${imageStyle}".
+    - Use background color "${backgroundColor}".
+
+Word/Phrase:
+"""
+${word}
+"""
+
+Return the result as a single JSON object with the following structure:
+{
+  "word": "string",
+  "lemma": "string",
+  "translation": "string",
+  "definition": "string",
+  "kind": "string",
+  "sex": "masculine | feminine | neuter | none",
+  "exampleSentence": "string",
+  "exampleSentenceTranslation": "string",
+  "imagePrompt": "string"
+}
+  `.trim();
+}
+
+export const SingleVocabResultSchema = z.object({
+  word: z.string(),
+  lemma: z.string(),
+  translation: z.string(),
+  definition: z.string().optional(),
+  kind: z.string(),
+  sex: z.enum(["masculine", "feminine", "neuter", "none"]),
+  exampleSentence: z.string(),
+  exampleSentenceTranslation: z.string(),
+  imagePrompt: z.string(),
+});
+
+export type SingleVocabResult = z.infer<typeof SingleVocabResultSchema>;
+
+export async function generateSingleVocab(
+  word: string,
+  targetLanguage: string,
+  level: string,
+  options?: {
+    imageStyle?: string;
+    backgroundColor?: string;
+    retries?: number;
+    model?: string;
+  },
+): Promise<SingleVocabResult> {
+  const {
+    imageStyle,
+    backgroundColor,
+    retries = 2,
+    model = "google/gemini-2.5-flash-lite",
+  } = options ?? {};
+  const prompt = getSingleVocabPrompt(
+    word,
+    targetLanguage,
+    level,
+    imageStyle,
+    backgroundColor,
+  );
+
+  let lastError: unknown;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const result = await generateStructuredJSON<unknown>(
+        prompt,
+        "You are a helpful language learning assistant. Always respond with valid JSON.",
+        model,
+      );
+      const validated = SingleVocabResultSchema.parse(result);
+      return validated;
+    } catch (error) {
+      console.error(
+        `Attempt ${i + 1} for SingleVocab generation failed:`,
+        error,
+      );
+      lastError = error;
+    }
+  }
+
+  throw new Error(
+    `Failed to generate single vocabulary entry after ${retries + 1} attempts: ${lastError instanceof Error ? lastError.message : "Unknown error"}`,
+  );
 }
 
 export async function generateMiniStory(
