@@ -6,6 +6,7 @@ import {
   Library,
   Settings,
   PackagePlus,
+  MessageCircle,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -67,6 +68,7 @@ export function AppSidebar() {
       icon: BookOpen,
       count: stats?.stories,
     },
+    { name: "Chat History", href: "/chat", icon: MessageCircle },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 

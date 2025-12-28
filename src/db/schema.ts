@@ -204,3 +204,34 @@ export const vocabToPackage = pgTable(
     }),
   }),
 );
+
+// Chat conversations - one per context (story page, vodex entry)
+export const chatConversations = pgTable("chat_conversations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  learningSpaceId: uuid("learning_space_id").references(
+    () => learningSpaces.id,
+    { onDelete: "cascade" },
+  ),
+  contextType: text("context_type").notNull(), // 'story' | 'vodex'
+  contextId: text("context_id").notNull(), // storyId:pageNumber or vocabId
+  contextText: text("context_text").notNull(), // The target language sentence/word
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+// Chat messages
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id")
+    .notNull()
+    .references(() => chatConversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // 'user' | 'assistant'
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

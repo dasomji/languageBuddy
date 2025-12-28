@@ -15,6 +15,7 @@ import { Button } from "~/components/ui/button";
 import { PresignedImage } from "~/components/ui/presigned-image";
 import { AudioPlayer } from "~/components/ui/audio-player";
 import { NoActiveSpace } from "~/components/learning-space/no-active-space";
+import { useChatContext } from "~/components/chat";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ interface VocabEntry {
 export default function VodexPage() {
   const searchParams = useSearchParams();
   const initialPackageId = searchParams.get("packageId");
+  const { setContext, clearContext } = useChatContext();
 
   const [search, setSearch] = useState("");
   const [wordKindFilter, setWordKindFilter] = useState<string>("all");
@@ -166,6 +168,24 @@ export default function VodexPage() {
       setSelectedVocab(vocabData.vocabularies[0] as VocabEntry);
     }
   }, [vocabData?.vocabularies, selectedVocab]);
+
+  // Set chat context when selected vocab changes
+  useEffect(() => {
+    if (selectedVocab) {
+      const contextText = selectedVocab.exampleSentence
+        ? `${selectedVocab.word} (${selectedVocab.translation})\n\nExample: ${selectedVocab.exampleSentence}`
+        : `${selectedVocab.word} (${selectedVocab.translation})`;
+      setContext({
+        type: "vodex",
+        id: selectedVocab.id,
+        text: contextText,
+      });
+    }
+
+    return () => {
+      clearContext();
+    };
+  }, [selectedVocab, setContext, clearContext]);
 
   const handlePlayAudio = (audioKey: string) => {
     setActiveAudio(

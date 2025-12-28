@@ -9,6 +9,7 @@ import { PresignedImage } from "~/components/ui/presigned-image";
 import { AudioPlayer } from "~/components/ui/audio-player";
 import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut";
 import { HeaderSetter } from "~/components/dashboard-header-context";
+import { useChatContext } from "~/components/chat";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -41,6 +42,7 @@ interface StoryReaderPageProps {
 export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   const resolvedParams = use(params);
   const router = useRouter();
+  const { setContext, clearContext } = useChatContext();
   const [currentPage, setCurrentPage] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
@@ -138,6 +140,27 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
       // Audio will auto-play via the AudioPlayer component
     }
   }, [currentPage, currentPageData?.audioKey, isPlaying]);
+
+  // Set chat context when page changes
+  useEffect(() => {
+    if (currentPageData?.textTarget) {
+      setContext({
+        type: "story",
+        id: `${storyId}:${currentPage}`,
+        text: currentPageData.textTarget,
+      });
+    }
+
+    return () => {
+      clearContext();
+    };
+  }, [
+    storyId,
+    currentPage,
+    currentPageData?.textTarget,
+    setContext,
+    clearContext,
+  ]);
 
   const goToPage = useCallback(
     (page: number) => {

@@ -38,3 +38,31 @@ export async function generateStructuredJSON<T>(
     throw error;
   }
 }
+
+export type ChatMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+};
+
+export async function generateChatResponse(
+  messages: ChatMessage[],
+  systemPrompt: string,
+  model = LLM_MODEL,
+): Promise<string> {
+  try {
+    const response = await openrouter.chat.completions.create({
+      model: model,
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("No content received from OpenRouter");
+    }
+
+    return content;
+  } catch (error) {
+    console.error("OpenRouter Chat Error:", error);
+    throw error;
+  }
+}
