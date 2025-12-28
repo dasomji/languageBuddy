@@ -1,48 +1,42 @@
-# Create T3 App x BetterAuth x shadcn/ui
+# EdgeLang (LanguageBuddy)
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app` and enhanced with [better-auth](https://better-auth.com/).
+EdgeLang is a self-study language learning application that leverages AI to create personalized learning content from daily diaries and topic-based requests.
 
-This template might change in the future and become less and less barebone.
+## Core Features
 
-## What's next? How do I make an app with this?
+### 1. AI-Powered Diary Analysis
+Write about your day in your native language, and EdgeLang will:
+- **Generate a Mini-Story**: A children's book-style story in your target language, simplified to your current level.
+- **Visuals & Audio**: Generate mnemonic-cued images and high-quality TTS audio for every page.
+- **Extract Vocabulary**: Automatically identify key words from the story and add them to your VoDex.
 
-This was originally a create-t3 template using NextAuth and Prisma.
-To use this simply go to the top of the GitHub page and click on "Use this template" and name your own repo.
+### 2. VoDex & Word Packages
+The **VoDex** is your personal vocabulary index. Words are organized into **Packages**:
+- **Diary Packages**: Automatically created from each processed diary entry.
+- **Topic Packages**: Generate a pack of 20-30 words by simply describing a topic (e.g., "At the airport", "Calisthenics vocabulary").
+- **Mnemonic Images**: Every word gets an AI-generated image with mnemonic cues (Fire-themed for Masculine, Ice-themed for Feminine).
 
-## Following changes were made:
-- Switch from NextAuth to BetterAuth
-- Beautiful Ready-to-Use email+password + GoogleOAuth auth pages (Login, Signup, Reset Password forms, Verification)
-- Switch from Prisma to Drizzle
-- Upgrade to Tailwind V4
-- Add all shadcn-ui components
-- Clear out template to use shadcn components from the start
+### 3. Interactive Reading
+Read your generated stories with a "page-turn" effect, synchronized audio, and click-to-translate functionality.
 
-## Stack:
-- [Next.js](https://nextjs.org)
-- [BetterAuth](https://better-auth.com/)
-- [shadcn/ui](https://ui.shadcn.com/)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+---
 
-## Original Template
+## Technical Stack
+- **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS 4, shadcn/ui.
+- **Backend**: tRPC 11 (with Subscriptions for live progress).
+- **Database**: PostgreSQL with Drizzle ORM.
+- **Auth**: better-auth 1.4.
+- **Storage**: S3-compatible (MinIO for local dev, Railway S3 for prod).
+- **AI Engine**: 
+  - **Text**: OpenRouter (`minimax/minimax-m2.1`) for structured JSON output.
+  - **Images**: fal.ai (`fal-ai/z-image/turbo`).
+  - **Audio**: ElevenLabs (Multilingual v2).
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
-
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available)
-
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app)
-
-## How do I deploy this?
-
-Follow the t3-stack deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
-
+---
 
 ## Local Development
 
 ### Configuration
-
 Copy `.env.example` to `.env` and fill in the following values:
 
 ```bash
@@ -59,7 +53,7 @@ GOOGLE_CLIENT_SECRET="your_google_secret"
 S3_ACCESS_KEY_ID="minioadmin"
 S3_SECRET_ACCESS_KEY="minioadmin"
 S3_ENDPOINT="http://localhost:9000"
-S3_BUCKET_NAME="languagebuddy" # Create this bucket in MinIO Console (localhost:9001)
+S3_BUCKET_NAME="languagebuddy"
 S3_REGION="us-east-1"
 
 # AI Services
@@ -72,15 +66,15 @@ FAL_KEY="your_fal_key"
 
 #### 1. Generate SSL certificates for Postgres
 ```bash
-   openssl req -new -x509 -days 365 -nodes \
-     -out server.crt -keyout server.key \
-     -subj "/CN=localhost"
-   chmod 600 server.key
-   chmod 644 server.crt
+openssl req -new -x509 -days 365 -nodes \
+  -out server.crt -keyout server.key \
+  -subj "/CN=localhost"
+chmod 600 server.key
+chmod 644 server.crt
 ```
 
 #### 2. Start Infrastructure
-Run the following Docker containers:
+Use Docker to run the required services:
 
 **PostgreSQL:**
 ```bash
@@ -96,7 +90,7 @@ docker run --name languagebuddy-postgres \
   -c ssl_key_file=/var/lib/postgresql/ssl/server.key
 ```
 
-**MinIO (S3 Compatible Storage):**
+**MinIO:**
 ```bash
 docker run -d \
   --name language-buddy-s3 \
@@ -109,25 +103,27 @@ docker run -d \
 ```
 
 #### 3. Database Migrations
-After setting up Postgres, run:
+Run the following to set up your schema:
 ```bash
 pnpm db:generate
 pnpm db:push
 ```
 
-## Core Utilities
+---
 
-### Storage & Assets
-The project uses an S3-compatible storage layer (Railway S3 in production, MinIO locally). 
-**Important**: Never use direct URLs. Always use presigned URLs for reading and writing.
+## Developer Guide
 
-Example usage from `src/lib/server/storage.ts`:
-```typescript
-import { getReadPresignedUrl, getWritePresignedUrl } from "~/lib/server/storage";
+### Background Processing & Subscriptions
+Generating AI content (stories, images, audio) is time-consuming. We use a background processing pattern:
+1. Client triggers a mutation (e.g., `createPackageFromTopic`).
+2. Server creates a record with `status: "processing"` and returns immediately.
+3. A background task runs the AI pipeline, updating `processedWords` and `status` in the DB.
+4. The client uses a **tRPC Subscription** (`packageProgress`) to listen for real-time updates via an `EventEmitter`.
 
-// Get a URL to display an image
-const readUrl = await getReadPresignedUrl("path/to/image.png");
+### Storage Pattern
+**NEVER** expose direct S3 URLs. The application uses presigned URLs for all asset access.
+- Use `getReadPresignedUrl(key)` for displaying images/audio.
+- Assets are organized by type: `stories/{id}/...` and `vocab/{id}/...`.
 
-// Get a URL to upload a file from the client
-const uploadUrl = await getWritePresignedUrl("path/to/new-audio.mp3", "audio/mpeg");
-```
+### AI Prompting
+Prompts are centrally managed in `src/lib/server/ai/prompts.ts`. We enforce **Structured Output** using Zod schemas to ensure the LLM returns valid JSON that matches our database structure.

@@ -140,7 +140,7 @@ export function getVocabPackPrompt(
 ) {
   return `
 You are an expert language teacher.
-I will provide you with a topic. Your task is to generate between 20 and 30 unique, highly relevant vocabulary words for that topic in ${targetLanguage} at language level "${level}".
+I will provide you with a topic or a description of what I'm interested in learning. Your task is to generate between 20 and 30 unique, highly relevant vocabulary words for that topic in ${targetLanguage} at language level "${level}".
 - Include a variety of parts of speech: nouns, verbs, adjectives, etc.
 - For each word:
   - word: the word (with an article if it's a noun, e.g., "la pomme").

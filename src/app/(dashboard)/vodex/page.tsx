@@ -20,14 +20,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
 } from "~/components/ui/dialog";
 import { useMediaQuery } from "~/hooks/use-media-query";
 import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut";
-import { Loader2, Search, Library, Flame, Snowflake, Play, Plus, BookOpen } from "lucide-react";
+import { Loader2, Search, Library, Flame, Snowflake, Play, BookOpen } from "lucide-react";
 import { cn } from "~/lib/utils";
-import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 
 interface VocabEntry {
@@ -51,16 +48,13 @@ export default function VodexPage() {
   const [wordKindFilter, setWordKindFilter] = useState<string>("all");
   const [sexFilter, setSexFilter] = useState<string>("all");
   const [packageFilter, setPackageFilter] = useState<string>(
-    initialPackageId || "all",
+    initialPackageId ?? "all",
   );
   const [selectedVocab, setSelectedVocab] = useState<VocabEntry | null>(null);
   const [isMobileDialogOpen, setIsMobileDialogOpen] = useState(false);
-  const [isCreatePackDialogOpen, setIsCreatePackDialogOpen] = useState(false);
-  const [newPackTopic, setNewPackTopic] = useState("");
   
   const isDesktop = useMediaQuery("(min-width: 640px)"); // Matches Tailwind 'sm'
 
-  const utils = api.useUtils();
   const [activeAudio, setActiveAudio] = useState<string | null>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -117,27 +111,6 @@ export default function VodexPage() {
       enabled: !!activeSpace,
     },
   );
-
-  const createPackMutation = api.vodex.createPackageFromTopic.useMutation({
-    onSuccess: (data) => {
-      toast.success("Vocabulary pack created successfully!");
-      setIsCreatePackDialogOpen(false);
-      setNewPackTopic("");
-      setPackageFilter(data.packageId);
-      utils.vodex.getPackages.invalidate();
-      utils.vodex.getAll.invalidate();
-      utils.vodex.getStats.invalidate();
-    },
-    onError: (error) => {
-      toast.error(`Failed to create pack: ${error.message}`);
-    },
-  });
-
-  const handleCreatePack = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPackTopic.trim()) return;
-    createPackMutation.mutate({ topic: newPackTopic });
-  };
 
   const handleNextWord = () => {
     if (!vocabData?.vocabularies || !selectedVocab) return;
@@ -222,23 +195,14 @@ export default function VodexPage() {
   return (
     <div className="space-y-8 pb-24">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-2">
-          <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
-            <Library className="h-8 w-8" />
-            VoDex: {stats?.totalWords}
-          </h1>
-          <p className="text-muted-foreground">
-            Your vocabulary index - review and practice words you&apos;ve learned
-          </p>
-        </div>
-        <Button
-          onClick={() => setIsCreatePackDialogOpen(true)}
-          className="w-full sm:w-auto"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create Word Pack
-        </Button>
+      <div className="flex flex-col gap-2">
+        <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
+          <Library className="h-8 w-8" />
+          VoDex: {stats?.totalWords}
+        </h1>
+        <p className="text-muted-foreground">
+          Your vocabulary index - review and practice words you&apos;ve learned
+        </p>
       </div>
 
       {/* Main Content: Split Layout */}
@@ -567,50 +531,6 @@ export default function VodexPage() {
               )}
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create Pack Dialog */}
-      <Dialog
-        open={isCreatePackDialogOpen}
-        onOpenChange={setIsCreatePackDialogOpen}
-      >
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Create Word Pack</DialogTitle>
-            <DialogDescription>
-              Describe a topic you want to learn words for. We&apos;ll generate
-              20-30 words with translations, examples, and mnemonic images.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreatePack} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="topic">Topic</Label>
-              <Input
-                id="topic"
-                placeholder="e.g., Food and Cooking, Calisthenics, Travel..."
-                value={newPackTopic}
-                onChange={(e) => setNewPackTopic(e.target.value)}
-                disabled={createPackMutation.isPending}
-                required
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="submit"
-                disabled={createPackMutation.isPending || !newPackTopic.trim()}
-              >
-                {createPackMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating Pack...
-                  </>
-                ) : (
-                  "Generate Pack"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
         </DialogContent>
       </Dialog>
     </div>

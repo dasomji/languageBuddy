@@ -342,6 +342,9 @@ export const diaryRouter = createTRPCRouter({
                 source: "diary",
                 sourceId: entry.id,
                 miniStoryId: storyId || null,
+                totalWords: vocabResult.vocabularies.length,
+                processedWords: 0,
+                status: "processing",
               })
               .returning();
 
@@ -432,8 +435,27 @@ export const diaryRouter = createTRPCRouter({
                       packageId: pack.id,
                     })
                     .onConflictDoNothing();
+                  
+                  // Update package progress
+                  await ctx.db
+                    .update(vodexPackages)
+                    .set({
+                      processedWords: idx + 1,
+                    })
+                    .where(eq(vodexPackages.id, pack.id));
                 }
               }
+            }
+
+            // Mark package as completed
+            if (pack) {
+              await ctx.db
+                .update(vodexPackages)
+                .set({
+                  status: "completed",
+                  processedWords: totalVocab,
+                })
+                .where(eq(vodexPackages.id, pack.id));
             }
             console.log(
               `[Vocab] Finished processing. Total: ${totalVocab}, Added: ${addedCount} (${addedWords.join(", ")}), Skipped: ${skippedCount} (${skippedWords.join(", ")})`,
@@ -483,9 +505,20 @@ export const diaryRouter = createTRPCRouter({
         storyId?: string;
         error?: string;
       }>((emit) => {
-        const onProgress = (data: any) => {
+        const onProgress = (data: {
+          diaryEntryId: string;
+          status: string;
+          progress: number;
+          storyId?: string;
+          error?: string;
+        }) => {
           if (data.diaryEntryId === input.diaryEntryId) {
-            emit.next(data);
+            emit.next({
+              status: data.status,
+              progress: data.progress,
+              storyId: data.storyId,
+              error: data.error,
+            });
           }
         };
 

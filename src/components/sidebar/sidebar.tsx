@@ -1,5 +1,12 @@
 "use client";
-import { BookOpen, Calendar, Grid, Library, Settings } from "lucide-react";
+import {
+  BookOpen,
+  Calendar,
+  Grid,
+  Library,
+  Settings,
+  PackagePlus,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,6 +28,7 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: Grid },
   { name: "Diary", href: "/diary", icon: Calendar },
   { name: "VoDex", href: "/vodex", icon: Library },
+  { name: "Add Word packages", href: "/vodex/packages", icon: PackagePlus },
   { name: "Stories", href: "/stories", icon: BookOpen },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
@@ -31,10 +39,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b flex flex-col gap-4 p-4">
-        <Link 
-          href="/" 
-          className="flex items-center gap-2 cursor-pointer"
+      <SidebarHeader className="flex flex-col gap-4 border-b p-4">
+        <Link
+          href="/"
+          className="flex cursor-pointer items-center gap-2"
           onClick={() => {
             if (isMobile) setOpenMobile(false);
           }}
@@ -49,9 +57,10 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigation.map((item) => {
-                const isActive = pathname === item.href || 
+                const isActive =
+                  pathname === item.href ||
                   (item.href !== "/" && pathname.startsWith(item.href));
-                
+
                 return (
                   <SidebarMenuItem key={item.name}>
                     <SidebarMenuButton
@@ -75,7 +84,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t p-4">
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-muted-foreground text-center text-xs">
           Learn languages your way
         </p>
       </SidebarFooter>

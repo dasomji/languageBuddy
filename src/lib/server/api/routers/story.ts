@@ -6,7 +6,7 @@ import {
   userSettings,
   vodexPackages,
 } from "~/db/schema";
-import { eq, desc, and, asc, sql } from "drizzle-orm";
+import { eq, desc, and, asc } from "drizzle-orm";
 
 export const storyRouter = createTRPCRouter({
   getAll: protectedProcedure

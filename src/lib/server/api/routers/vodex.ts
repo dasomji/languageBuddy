@@ -8,21 +8,16 @@ import {
   vocabToPackage,
   learningSpaces,
 } from "~/db/schema";
-import {
-  eq,
-  desc,
-  and,
-  like,
-  or,
-  sql,
-  inArray,
-  type SQL,
-  exists,
-} from "drizzle-orm";
+import { eq, desc, and, like, or, sql, type SQL, exists } from "drizzle-orm";
 import { generateVocabPack } from "~/lib/server/ai/prompts";
 import { generateImage } from "~/lib/server/ai/fal";
 import { generateAudio } from "~/lib/server/ai/elevenlabs";
 import { uploadFromBuffer, uploadFromUrl } from "~/lib/server/storage";
+import { observable } from "@trpc/server/observable";
+import { EventEmitter } from "events";
+
+// Global event emitter for progress updates
+const ee = new EventEmitter();
 
 export const vodexRouter = createTRPCRouter({
   getAll: protectedProcedure
@@ -257,15 +252,7 @@ export const vodexRouter = createTRPCRouter({
 
       const imageStyle = settings?.imageStyle ?? "children book watercolors";
 
-      // Generate vocab pack
-      const vocabResult = await generateVocabPack(
-        input.topic,
-        space.targetLanguage,
-        space.level,
-        { imageStyle, backgroundColor: "#FFFFFF" },
-      );
-
-      // Create package
+      // 1. Create package immediately in pending state
       const [pack] = await ctx.db
         .insert(vodexPackages)
         .values({
@@ -274,6 +261,7 @@ export const vodexRouter = createTRPCRouter({
           name: input.topic,
           description: `Vocabulary pack for: ${input.topic}`,
           source: "topic",
+          status: "processing",
         })
         .returning();
 
@@ -281,73 +269,180 @@ export const vodexRouter = createTRPCRouter({
         throw new Error("Failed to create package");
       }
 
-      // Process and save vocabularies
-      for (const vocabData of vocabResult.vocabularies) {
-        let vocab = await ctx.db.query.vocabularies.findFirst({
-          where: and(
-            eq(vocabularies.lemma, vocabData.lemma),
-            eq(vocabularies.learningSpaceId, space.id),
-          ),
-        });
-
-        if (!vocab) {
-          const vocabId = crypto.randomUUID();
-          const imageKey = `vocab/${vocabId}/image.png`;
-          const audioKey = `vocab/${vocabId}/audio.mp3`;
-
-          try {
-            const imageUrl = await generateImage({
-              prompt: vocabData.imagePrompt,
-            });
-            await uploadFromUrl(imageKey, imageUrl, "image/png");
-
-            const audioBuffer = await generateAudio(vocabData.exampleSentence);
-            await uploadFromBuffer(audioKey, audioBuffer, "audio/mpeg");
-
-            [vocab] = await ctx.db
-              .insert(vocabularies)
-              .values({
-                id: vocabId,
-                learningSpaceId: space.id,
-                word: vocabData.word,
-                lemma: vocabData.lemma,
-                translation: vocabData.translation,
-                wordKind: vocabData.kind,
-                sex: vocabData.sex,
-                exampleSentence: vocabData.exampleSentence,
-                exampleSentenceTranslation: vocabData.exampleSentenceTranslation,
-                exampleAudioKey: audioKey,
-                imageKey,
+      // 2. Start background processing
+      const run = async () => {
+        try {
+          const updatePackageProgress = async (
+            processed: number,
+            total: number,
+            status: "processing" | "completed" | "error" = "processing",
+            error?: string,
+          ) => {
+            await ctx.db
+              .update(vodexPackages)
+              .set({
+                processedWords: processed,
+                totalWords: total,
+                status,
+                processingError: error,
               })
-              .returning();
-          } catch (err) {
-            console.error(`Failed to process vocab ${vocabData.word}:`, err);
-            continue;
-          }
-        }
+              .where(eq(vodexPackages.id, pack.id));
 
-        if (vocab) {
-          // Add to user progress
-          await ctx.db
-            .insert(userVocabProgress)
-            .values({
-              userId: ctx.session.user.id,
-              learningSpaceId: space.id,
-              vocabId: vocab.id,
-            })
-            .onConflictDoNothing();
-
-          // Link to package
-          await ctx.db
-            .insert(vocabToPackage)
-            .values({
-              vocabId: vocab.id,
+            ee.emit("progress", {
               packageId: pack.id,
+              processedWords: processed,
+              totalWords: total,
+              status,
+              error,
+            });
+          };
+
+          // Generate vocab pack
+          const vocabResult = await generateVocabPack(
+            input.topic,
+            space.targetLanguage,
+            space.level,
+            { imageStyle, backgroundColor: "#FFFFFF" },
+          );
+
+          const totalWords = vocabResult.vocabularies.length;
+          await updatePackageProgress(0, totalWords);
+
+          let processedCount = 0;
+
+          // Process and save vocabularies
+          for (const vocabData of vocabResult.vocabularies) {
+            let vocab = await ctx.db.query.vocabularies.findFirst({
+              where: and(
+                eq(vocabularies.lemma, vocabData.lemma),
+                eq(vocabularies.learningSpaceId, space.id),
+              ),
+            });
+
+            if (!vocab) {
+              const vocabId = crypto.randomUUID();
+              const imageKey = `vocab/${vocabId}/image.png`;
+              const audioKey = `vocab/${vocabId}/audio.mp3`;
+
+              try {
+                const imageUrl = await generateImage({
+                  prompt: vocabData.imagePrompt,
+                });
+                await uploadFromUrl(imageKey, imageUrl, "image/png");
+
+                const audioBuffer = await generateAudio(
+                  vocabData.exampleSentence,
+                );
+                await uploadFromBuffer(audioKey, audioBuffer, "audio/mpeg");
+
+                [vocab] = await ctx.db
+                  .insert(vocabularies)
+                  .values({
+                    id: vocabId,
+                    learningSpaceId: space.id,
+                    word: vocabData.word,
+                    lemma: vocabData.lemma,
+                    translation: vocabData.translation,
+                    wordKind: vocabData.kind,
+                    sex: vocabData.sex,
+                    exampleSentence: vocabData.exampleSentence,
+                    exampleSentenceTranslation:
+                      vocabData.exampleSentenceTranslation,
+                    exampleAudioKey: audioKey,
+                    imageKey,
+                  })
+                  .returning();
+              } catch (err) {
+                console.error(
+                  `Failed to process vocab ${vocabData.word}:`,
+                  err,
+                );
+              }
+            }
+
+            if (vocab) {
+              // Add to user progress
+              await ctx.db
+                .insert(userVocabProgress)
+                .values({
+                  userId: ctx.session.user.id,
+                  learningSpaceId: space.id,
+                  vocabId: vocab.id,
+                })
+                .onConflictDoNothing();
+
+              // Link to package
+              await ctx.db
+                .insert(vocabToPackage)
+                .values({
+                  vocabId: vocab.id,
+                  packageId: pack.id,
+                })
+                .onConflictDoNothing();
+            }
+
+            processedCount++;
+            await updatePackageProgress(processedCount, totalWords);
+          }
+
+          // Mark as completed
+          await updatePackageProgress(totalWords, totalWords, "completed");
+        } catch (err) {
+          console.error("Package generation failed:", err);
+          await ctx.db
+            .update(vodexPackages)
+            .set({
+              status: "error",
+              processingError:
+                err instanceof Error ? err.message : "Unknown error",
             })
-            .onConflictDoNothing();
+            .where(eq(vodexPackages.id, pack.id));
+
+          ee.emit("progress", {
+            packageId: pack.id,
+            status: "error",
+            error: err instanceof Error ? err.message : "Unknown error",
+          });
         }
-      }
+      };
+
+      void run();
 
       return { packageId: pack.id };
+    }),
+
+  packageProgress: protectedProcedure
+    .input(z.object({ packageId: z.string().uuid() }))
+    .subscription(({ input }) => {
+      return observable<{
+        packageId: string;
+        processedWords: number;
+        totalWords: number;
+        status: string;
+        error?: string;
+      }>((emit) => {
+        const onProgress = (data: {
+          packageId: string;
+          processedWords: number;
+          totalWords: number;
+          status: string;
+          error?: string;
+        }) => {
+          if (data.packageId === input.packageId) {
+            emit.next({
+              packageId: data.packageId,
+              processedWords: data.processedWords,
+              totalWords: data.totalWords,
+              status: data.status,
+              error: data.error,
+            });
+          }
+        };
+
+        ee.on("progress", onProgress);
+        return () => {
+          ee.off("progress", onProgress);
+        };
+      });
     }),
 });

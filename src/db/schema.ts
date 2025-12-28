@@ -177,6 +177,10 @@ export const vodexPackages = pgTable("vodex_packages", {
   miniStoryId: uuid("mini_story_id").references(() => miniStories.id, {
     onDelete: "set null",
   }),
+  totalWords: integer("total_words").notNull().default(0),
+  processedWords: integer("processed_words").notNull().default(0),
+  status: text("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'error'
+  processingError: text("processing_error"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at")
     .notNull()
