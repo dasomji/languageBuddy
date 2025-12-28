@@ -12,7 +12,14 @@ import {
 } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { PresignedImage } from "~/components/ui/presigned-image";
-import { Loader2, BookOpen, Eye, Clock, RefreshCcw, Library } from "lucide-react";
+import {
+  Loader2,
+  BookOpen,
+  Eye,
+  Clock,
+  RefreshCcw,
+  Library,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { NoActiveSpace } from "~/components/learning-space/no-active-space";
 
@@ -124,8 +131,17 @@ export default function StoriesPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {storiesData?.stories.map((story) => (
-            <Link key={story.id} href={`/stories/${story.id}`}>
-              <Card className="h-full cursor-pointer transition-shadow hover:shadow-lg">
+            <Card
+              key={story.id}
+              className="group relative flex h-full flex-col transition-shadow hover:shadow-lg"
+            >
+              <Link
+                href={`/stories/${story.id}`}
+                className="absolute inset-0 z-0"
+              >
+                <span className="sr-only">View story: {story.title}</span>
+              </Link>
+              <div className="pointer-events-none relative z-10 flex h-full flex-col">
                 <div className="bg-muted aspect-video w-full overflow-hidden rounded-t-lg">
                   {story.coverImageKey ? (
                     <PresignedImage
@@ -150,7 +166,7 @@ export default function StoriesPage() {
                     {story.fullTextNative?.substring(0, 100)}...
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-4">
+                <CardContent className="flex flex-1 flex-col gap-4">
                   <div className="text-muted-foreground flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1">
                       <RefreshCcw className="h-4 w-4" />
@@ -175,23 +191,22 @@ export default function StoriesPage() {
                     </div>
                   )}
                   {story.packageId && (
-                    <Link
-                      href={`/vodex?packageId=${story.packageId}`}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="w-full text-xs"
-                      >
-                        <Library className="mr-2 h-3 w-3" />
-                        Words from this story
-                      </Button>
-                    </Link>
+                    <div className="pointer-events-auto mt-auto">
+                      <Link href={`/vodex?packageId=${story.packageId}`}>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="w-full text-xs"
+                        >
+                          <Library className="mr-2 h-3 w-3" />
+                          Words from this story
+                        </Button>
+                      </Link>
+                    </div>
                   )}
                 </CardContent>
-              </Card>
-            </Link>
+              </div>
+            </Card>
           ))}
         </div>
       )}
