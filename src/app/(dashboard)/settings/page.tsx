@@ -146,7 +146,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="align-center flex flex-col justify-center space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
@@ -154,7 +154,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid max-w-96 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Learning Spaces</CardTitle>

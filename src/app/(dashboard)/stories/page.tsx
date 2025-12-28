@@ -33,7 +33,7 @@ export default function StoriesPage() {
   if (isLoading || isLoadingSpace) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -43,10 +43,10 @@ export default function StoriesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-24">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
           <BookOpen className="h-8 w-8" />
           Mini-Stories
         </h1>
@@ -56,10 +56,10 @@ export default function StoriesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Total Stories
             </CardTitle>
           </CardHeader>
@@ -69,22 +69,24 @@ export default function StoriesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Completed
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.completedStories ?? 0}</div>
+            <div className="text-2xl font-bold">
+              {stats?.completedStories ?? 0}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Total Reads
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
+            <div className="flex items-center gap-2 text-2xl font-bold">
               <RefreshCcw className="h-4 w-4" />
               {stats?.totalReads ?? 0}
             </div>
@@ -92,12 +94,12 @@ export default function StoriesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Total Opens
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
+            <div className="flex items-center gap-2 text-2xl font-bold">
               <Eye className="h-4 w-4" />
               {stats?.totalOpens ?? 0}
             </div>
@@ -109,9 +111,9 @@ export default function StoriesPage() {
       {storiesData?.stories.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No stories yet</h3>
-            <p className="text-muted-foreground text-center mb-4">
+            <BookOpen className="text-muted-foreground mb-4 h-12 w-12" />
+            <h3 className="mb-2 text-lg font-semibold">No stories yet</h3>
+            <p className="text-muted-foreground mb-4 text-center">
               Write your first diary entry to generate your first mini-story!
             </p>
             <Link href="/diary">
@@ -124,7 +126,7 @@ export default function StoriesPage() {
           {storiesData?.stories.map((story) => (
             <Link key={story.id} href={`/stories/${story.id}`}>
               <Card className="h-full cursor-pointer transition-shadow hover:shadow-lg">
-                <div className="aspect-video w-full overflow-hidden rounded-t-lg bg-muted">
+                <div className="bg-muted aspect-video w-full overflow-hidden rounded-t-lg">
                   {story.coverImageKey ? (
                     <PresignedImage
                       src={story.coverImageKey}
@@ -133,13 +135,13 @@ export default function StoriesPage() {
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center">
-                      <BookOpen className="h-12 w-12 text-muted-foreground" />
+                      <BookOpen className="text-muted-foreground h-12 w-12" />
                     </div>
                   )}
                 </div>
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg line-clamp-1">
+                    <CardTitle className="line-clamp-1 text-lg">
                       {story.title}
                     </CardTitle>
                     <Badge variant="outline">{story.languageLevel}</Badge>
@@ -149,7 +151,7 @@ export default function StoriesPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <div className="text-muted-foreground flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1">
                       <RefreshCcw className="h-4 w-4" />
                       <span>{story.readCount ?? 0} reads</span>
@@ -181,4 +183,3 @@ export default function StoriesPage() {
     </div>
   );
 }
-

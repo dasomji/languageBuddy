@@ -181,7 +181,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <HeaderSetter>
         <Breadcrumb>
           <BreadcrumbList>
@@ -204,24 +204,23 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
       </HeaderSetter>
 
       {/* Story Content */}
-      <div className="grid flex-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
+      <div className="grid min-h-0 flex-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
         {/* Text */}
-        <div className="flex items-center justify-center space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
+        <div className="flex min-h-0 flex-col items-center justify-center space-y-6 overflow-y-auto">
+          <div className="w-full">
+            <div className="w-full">
+              {currentPageData &&
+                renderTextWithClickableWords(currentPageData.textTarget)}
+            </div>
+            <div className="pl-1">
               <p className="text-muted-foreground text-lg">
                 {currentPageData?.textNative}
               </p>
             </div>
-
-            <div className="prose prose-sm max-w-none">
-              {currentPageData &&
-                renderTextWithClickableWords(currentPageData.textTarget)}
-            </div>
           </div>
         </div>
         {/* Image */}
-        <div className="relative aspect-square max-w-[250px] overflow-hidden md:max-w-[500px] lg:rounded-lg">
+        <div className="relative flex min-h-0 items-center justify-center overflow-hidden lg:rounded-lg">
           {currentPageData?.imageKey ? (
             <PresignedImage
               src={currentPageData.imageKey}
@@ -237,7 +236,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
       </div>
       {/* Audio Player */}
       {currentPageData?.audioKey && (
-        <div className="flex justify-center">
+        <div className="flex shrink-0 justify-center">
           <div className="max-w-[500px]">
             <AudioPlayer
               src={`/api/storage/presigned?key=${encodeURIComponent(currentPageData.audioKey)}&redirect=true`}
@@ -257,7 +256,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
       )}
 
       {/* Navigation */}
-      <div className="mt-6 flex items-center justify-between border-t pt-4">
+      <div className="mt-6 flex shrink-0 items-center justify-between border-t pt-4">
         <Button
           variant="outline"
           onClick={prevPage}
