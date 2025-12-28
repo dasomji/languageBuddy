@@ -29,7 +29,6 @@ import {
   X,
   CheckCircle,
   RotateCcw,
-  Volume2,
 } from "lucide-react";
 import { type RouterOutputs } from "~/trpc/react";
 
@@ -432,7 +431,8 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="border-primary mx-auto mb-6 h-16 w-16 animate-spin rounded-full border-b-4" />
                 <p className="text-muted-foreground">
-                  Creating mnemonic image and audio for &quot;{selectedWord}&quot;...
+                  Creating mnemonic image and audio for &quot;{selectedWord}
+                  &quot;...
                 </p>
               </div>
             </>
@@ -442,7 +442,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
                 <div className="flex items-center justify-between pr-8">
                   <div>
                     <DialogTitle className="text-3xl font-bold">
-                      {selectedVocab.word}
+                      {selectedVocab.word} = {selectedVocab.translation}
                     </DialogTitle>
                     <p className="text-muted-foreground text-sm italic">
                       {selectedVocab.lemma !== selectedVocab.word &&
@@ -456,32 +456,23 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
                 </div>
               </DialogHeader>
 
-              <div className="grid gap-6 py-4">
+              <div className="flex flex-col gap-4">
                 {/* Image */}
                 {selectedVocab.imageKey && (
-                  <div className="relative aspect-square overflow-hidden rounded-xl border">
+                  <div className="relative aspect-square max-h-[100px]">
                     <PresignedImage
                       src={selectedVocab.imageKey}
                       alt={selectedVocab.word}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                     />
                   </div>
                 )}
 
                 {/* Translation & Definition */}
                 <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                      Translation
-                    </h4>
-                    <p className="text-2xl font-semibold">
-                      {selectedVocab.translation}
-                    </p>
-                  </div>
-
                   {selectedVocab.definition && (
                     <div>
-                      <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                      <h4 className="text-muted-foreground text-sm font-medium tracking-wider uppercase">
                         Definition
                       </h4>
                       <p className="text-lg">{selectedVocab.definition}</p>
@@ -490,9 +481,6 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
 
                   {selectedVocab.exampleSentence && (
                     <div className="bg-muted/50 rounded-lg p-4">
-                      <h4 className="mb-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                        Example
-                      </h4>
                       <div className="space-y-2">
                         <p className="text-xl leading-snug font-medium">
                           {selectedVocab.exampleSentence}

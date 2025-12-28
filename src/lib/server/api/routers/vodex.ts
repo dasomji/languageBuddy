@@ -8,7 +8,17 @@ import {
   vocabToPackage,
   learningSpaces,
 } from "~/db/schema";
-import { eq, desc, and, like, or, sql, type SQL, exists } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  and,
+  like,
+  or,
+  sql,
+  type SQL,
+  exists,
+  ilike,
+} from "drizzle-orm";
 import {
   generateVocabPack,
   generateSingleVocab,
@@ -35,12 +45,15 @@ export const vodexRouter = createTRPCRouter({
         });
       }
 
-      const word = input.word.trim();
+      const word = input.word.trim().toLowerCase();
 
       const vocab = await ctx.db.query.vocabularies.findFirst({
         where: and(
           eq(vocabularies.learningSpaceId, settings.activeLearningSpaceId),
-          eq(vocabularies.lemma, word),
+          or(
+            ilike(vocabularies.word, `%${word}%`),
+            eq(vocabularies.lemma, `%${word}%`),
+          ),
         ),
       });
 
@@ -78,13 +91,13 @@ export const vodexRouter = createTRPCRouter({
         });
       }
 
-      const word = input.word.trim();
+      const word = input.word.trim().toLowerCase();
 
       // 1. Double check if it exists now
       let vocab = await ctx.db.query.vocabularies.findFirst({
         where: and(
           eq(vocabularies.learningSpaceId, space.id),
-          eq(vocabularies.lemma, word),
+          or(eq(vocabularies.word, word), eq(vocabularies.lemma, word)),
         ),
       });
 
