@@ -1,12 +1,22 @@
 "use client";
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { PresignedImage } from "~/components/ui/presigned-image";
 import { AudioPlayer } from "~/components/ui/audio-player";
 import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut";
+import { HeaderSetter } from "~/components/dashboard-header-context";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "~/components/ui/breadcrumb";
 import {
   Dialog,
   DialogContent,
@@ -164,18 +174,26 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
 
   return (
     <div className="flex min-h-[calc(100vh-8rem)] flex-col">
-      {/* Header */}
-      <div className="mb-4 flex items-center justify-center">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={closeStory}>
-            <X className="h-5 w-5" />
-          </Button>
-          <div className="flex gap-4">
-            <h1 className="text-xl font-bold">{story.title}</h1>
-            <Badge variant="outline">{story.languageLevel}</Badge>
-          </div>
-        </div>
-      </div>
+      <HeaderSetter>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/stories">Stories</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <div className="flex items-center gap-2">
+                <BreadcrumbPage className="text-xl font-bold">
+                  {story.title}
+                </BreadcrumbPage>
+                <Badge variant="outline">{story.languageLevel}</Badge>
+              </div>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </HeaderSetter>
 
       {/* Story Content */}
       <div className="grid flex-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
