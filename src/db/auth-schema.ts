@@ -11,6 +11,11 @@ export const user = pgTable("user", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  // Admin plugin fields
+  role: text("role").default("user"),
+  banned: boolean("banned").default(true), // Users are on waitlist by default
+  banReason: text("ban_reason"),
+  banExpires: timestamp("ban_expires"),
 });
 
 export const session = pgTable("session", {

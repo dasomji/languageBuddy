@@ -10,6 +10,7 @@ import { AppSidebar } from "~/components/sidebar/sidebar";
 import { HeaderProvider } from "~/components/dashboard-header-context";
 import { DashboardHeaderContent } from "~/components/dashboard-header-content";
 import { ChatProviderWrapper } from "~/components/chat/chat-provider-wrapper";
+import { WaitlistMessage } from "~/components/waitlist-message";
 
 export default async function DashboardLayout({
   children,
@@ -22,6 +23,19 @@ export default async function DashboardLayout({
 
   if (!session?.user) {
     redirect("/auth/signin");
+  }
+
+  // Check if user is on waitlist (banned = true means waitlisted)
+  // Admins bypass the waitlist check
+  const isWaitlisted = session.user.banned === true && session.user.role !== "admin";
+
+  if (isWaitlisted) {
+    return (
+      <WaitlistMessage
+        userName={session.user.name}
+        userEmail={session.user.email}
+      />
+    );
   }
 
   return (

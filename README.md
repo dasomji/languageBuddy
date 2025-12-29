@@ -60,6 +60,9 @@ S3_REGION="us-east-1"
 OPENROUTER_API_KEY="your_openrouter_key"
 ELEVENLABS_API_KEY="your_elevenlabs_key"
 FAL_KEY="your_fal_key"
+
+# Email (Resend)
+RESEND_API_KEY="re_xxxxx"
 ```
 
 ### Setup Services
@@ -127,3 +130,85 @@ Generating AI content (stories, images, audio) is time-consuming. We use a backg
 
 ### AI Prompting
 Prompts are centrally managed in `src/lib/server/ai/prompts.ts`. We enforce **Structured Output** using Zod schemas to ensure the LLM returns valid JSON that matches our database structure.
+
+---
+
+## User Access & Waitlist System
+
+EdgeLang uses a waitlist system for beta access control. New users who sign up are placed on a waitlist (their account is created with `banned: true`) and see a beta message until an admin approves them.
+
+### User States
+- **Waitlisted** (`banned: true`): User sees beta message, cannot access features
+- **Approved** (`banned: false`, `role: 'user'`): Full access to all features
+- **Admin** (`role: 'admin'`): Full access plus admin dashboard at `/admin`
+
+### Admin Dashboard
+Admins can access the admin dashboard at `/admin` to:
+- View all users and their status
+- Approve waitlisted users (sends approval email)
+- Move approved users back to waitlist
+- Promote users to admin
+- View active sessions
+- Send beta invitations via email
+
+---
+
+## Creating an Admin User in Production
+
+To create the first admin user in a production environment:
+
+### Method 1: Direct Database Update (Recommended for First Admin)
+
+1. Sign up normally through the application at `/auth/signup`
+2. Connect to your production database
+3. Run the following SQL command:
+
+```sql
+UPDATE "user" 
+SET role = 'admin', banned = false 
+WHERE email = 'your-email@example.com';
+```
+
+4. Refresh the page - you now have admin access and can see the Admin link in the sidebar
+
+### Method 2: Using Drizzle Studio
+
+1. Sign up normally through the application
+2. Run `pnpm db:studio` to open Drizzle Studio
+3. Navigate to the `user` table
+4. Find your user by email
+5. Update `role` to `'admin'` and `banned` to `false`
+6. Save changes
+
+### Promoting Additional Admins
+
+Once you have admin access, you can promote other users to admin through the Admin Dashboard:
+
+1. Go to `/admin`
+2. Find the user in the Users tab
+3. Click "Make Admin" button
+4. Confirm the action
+
+### Security Notes
+
+- Admin users bypass the waitlist check automatically
+- Only admins can access the `/admin` route
+- Admins cannot demote themselves
+- Admins cannot ban other admin users
+
+---
+
+## Email Configuration (Resend)
+
+EdgeLang uses [Resend](https://resend.com) for sending emails. Add your API key to `.env`:
+
+```bash
+RESEND_API_KEY="re_xxxxx"
+```
+
+### Email Types
+- **Invitation Email**: Sent when an admin invites a new user
+- **Approval Email**: Sent when an admin approves a waitlisted user
+
+### Customizing Emails
+Email templates are located in `src/lib/server/email.ts`. Update the `from` address to match your verified domain in Resend.

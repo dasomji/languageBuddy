@@ -8,6 +8,7 @@ import {
   PackagePlus,
   MessageCircle,
   Dumbbell,
+  Shield,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -28,10 +29,12 @@ import { LearningSpaceSwitcher } from "./learning-space-switcher";
 import { api } from "~/trpc/react";
 import { useState, useEffect } from "react";
 import { Badge } from "~/components/ui/badge";
+import { useSession } from "~/lib/auth-client";
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
+  const { data: session } = useSession();
 
   const { data: initialStats } = api.stats.getStats.useQuery();
   const [stats, setStats] = useState(initialStats);
@@ -50,6 +53,8 @@ export function AppSidebar() {
       setStats(initialStats);
     }
   }, [initialStats]);
+
+  const isAdmin = session?.user?.role === "admin";
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: Grid },
@@ -81,6 +86,10 @@ export function AppSidebar() {
     },
     { name: "Chat History", href: "/chat", icon: MessageCircle },
     { name: "Settings", href: "/settings", icon: Settings },
+    // Admin-only navigation
+    ...(isAdmin
+      ? [{ name: "Admin", href: "/admin", icon: Shield, adminOnly: true }]
+      : []),
   ];
 
   return (

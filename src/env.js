@@ -25,6 +25,8 @@ export const env = createEnv({
     OPENROUTER_API_KEY: z.string(),
     ELEVENLABS_API_KEY: z.string(),
     FAL_AI_API_KEY: z.string(),
+    // Email
+    RESEND_API_KEY: z.string(),
   },
 
   /**
@@ -55,6 +57,7 @@ export const env = createEnv({
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
     FAL_AI_API_KEY: process.env.FAL_AI_API_KEY,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
