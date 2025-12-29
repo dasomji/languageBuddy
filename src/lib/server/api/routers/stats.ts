@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/lib/server/api/trpc";
 import {
   diaryEntries,
@@ -32,22 +31,42 @@ export const statsRouter = createTRPCRouter({
     const [storiesCount] = await ctx.db
       .select({ count: sql<number>`count(*)` })
       .from(miniStories)
-      .where(and(eq(miniStories.userId, userId), eq(miniStories.learningSpaceId, spaceId)));
+      .where(
+        and(
+          eq(miniStories.userId, userId),
+          eq(miniStories.learningSpaceId, spaceId),
+        ),
+      );
 
     const [vocabsCount] = await ctx.db
       .select({ count: sql<number>`count(*)` })
       .from(userVocabProgress)
-      .where(and(eq(userVocabProgress.userId, userId), eq(userVocabProgress.learningSpaceId, spaceId)));
+      .where(
+        and(
+          eq(userVocabProgress.userId, userId),
+          eq(userVocabProgress.learningSpaceId, spaceId),
+        ),
+      );
 
     const [diaryEntriesCount] = await ctx.db
       .select({ count: sql<number>`count(*)` })
       .from(diaryEntries)
-      .where(and(eq(diaryEntries.userId, userId), eq(diaryEntries.learningSpaceId, spaceId)));
+      .where(
+        and(
+          eq(diaryEntries.userId, userId),
+          eq(diaryEntries.learningSpaceId, spaceId),
+        ),
+      );
 
     const [wordPackagesCount] = await ctx.db
       .select({ count: sql<number>`count(*)` })
       .from(vodexPackages)
-      .where(and(eq(vodexPackages.userId, userId), eq(vodexPackages.learningSpaceId, spaceId)));
+      .where(
+        and(
+          eq(vodexPackages.userId, userId),
+          eq(vodexPackages.learningSpaceId, spaceId),
+        ),
+      );
 
     return {
       stories: Number(storiesCount?.count ?? 0),
@@ -64,39 +83,64 @@ export const statsRouter = createTRPCRouter({
       diaryEntries: number;
       wordPackages: number;
     }>((emit) => {
-      const onStatsUpdated = async (data: { userId: string; learningSpaceId: string }) => {
-        if (data.userId === ctx.session.user.id) {
-          // Re-fetch stats and emit
-          const spaceId = data.learningSpaceId;
-          const userId = data.userId;
+      const onStatsUpdated = (data: {
+        userId: string;
+        learningSpaceId: string;
+      }) => {
+        void (async () => {
+          if (data.userId === ctx.session.user.id) {
+            // Re-fetch stats and emit
+            const spaceId = data.learningSpaceId;
+            const userId = data.userId;
 
-          const [storiesCount] = await ctx.db
-            .select({ count: sql<number>`count(*)` })
-            .from(miniStories)
-            .where(and(eq(miniStories.userId, userId), eq(miniStories.learningSpaceId, spaceId)));
+            const [storiesCount] = await ctx.db
+              .select({ count: sql<number>`count(*)` })
+              .from(miniStories)
+              .where(
+                and(
+                  eq(miniStories.userId, userId),
+                  eq(miniStories.learningSpaceId, spaceId),
+                ),
+              );
 
-          const [vocabsCount] = await ctx.db
-            .select({ count: sql<number>`count(*)` })
-            .from(userVocabProgress)
-            .where(and(eq(userVocabProgress.userId, userId), eq(userVocabProgress.learningSpaceId, spaceId)));
+            const [vocabsCount] = await ctx.db
+              .select({ count: sql<number>`count(*)` })
+              .from(userVocabProgress)
+              .where(
+                and(
+                  eq(userVocabProgress.userId, userId),
+                  eq(userVocabProgress.learningSpaceId, spaceId),
+                ),
+              );
 
-          const [diaryEntriesCount] = await ctx.db
-            .select({ count: sql<number>`count(*)` })
-            .from(diaryEntries)
-            .where(and(eq(diaryEntries.userId, userId), eq(diaryEntries.learningSpaceId, spaceId)));
+            const [diaryEntriesCount] = await ctx.db
+              .select({ count: sql<number>`count(*)` })
+              .from(diaryEntries)
+              .where(
+                and(
+                  eq(diaryEntries.userId, userId),
+                  eq(diaryEntries.learningSpaceId, spaceId),
+                ),
+              );
 
-          const [wordPackagesCount] = await ctx.db
-            .select({ count: sql<number>`count(*)` })
-            .from(vodexPackages)
-            .where(and(eq(vodexPackages.userId, userId), eq(vodexPackages.learningSpaceId, spaceId)));
+            const [wordPackagesCount] = await ctx.db
+              .select({ count: sql<number>`count(*)` })
+              .from(vodexPackages)
+              .where(
+                and(
+                  eq(vodexPackages.userId, userId),
+                  eq(vodexPackages.learningSpaceId, spaceId),
+                ),
+              );
 
-          emit.next({
-            stories: Number(storiesCount?.count ?? 0),
-            vocabs: Number(vocabsCount?.count ?? 0),
-            diaryEntries: Number(diaryEntriesCount?.count ?? 0),
-            wordPackages: Number(wordPackagesCount?.count ?? 0),
-          });
-        }
+            emit.next({
+              stories: Number(storiesCount?.count ?? 0),
+              vocabs: Number(vocabsCount?.count ?? 0),
+              diaryEntries: Number(diaryEntriesCount?.count ?? 0),
+              wordPackages: Number(wordPackagesCount?.count ?? 0),
+            });
+          }
+        })();
       };
 
       ee.on(EVENTS.STATS_UPDATED, onStatsUpdated);
@@ -106,4 +150,3 @@ export const statsRouter = createTRPCRouter({
     });
   }),
 });
-

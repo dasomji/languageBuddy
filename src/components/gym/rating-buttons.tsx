@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { Rating } from "ts-fsrs";
 import { Button } from "~/components/ui/button";
-import { RATING_CONFIG } from "~/lib/gym/types";
+import { RATING_CONFIG, Rating, type Grade } from "~/lib/gym/types";
 import { cn } from "~/lib/utils";
 
 interface RatingButtonsProps {
-  onRate: (rating: Rating) => void;
+  onRate: (rating: Grade) => void;
   disabled?: boolean;
   showKeyboardHints?: boolean;
 }

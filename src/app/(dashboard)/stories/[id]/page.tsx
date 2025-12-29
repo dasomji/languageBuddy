@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, use, useMemo } from "react";
+import { useState, useEffect, useCallback, use, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "~/trpc/react";
@@ -49,9 +49,8 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [vocabData, setVocabData] = useState<Record<string, Vocab>>({});
   const [failedWords, setFailedWords] = useState<Set<string>>(new Set());
-  const [isPreloadingVocab, setIsPreloadingVocab] = useState(false);
+  const isPreloadingVocab = useRef(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatingWord, setGeneratingWord] = useState<string | null>(null);
 
   const storyId = resolvedParams.id;
   const { data: story, isLoading } = api.story.getById.useQuery({
@@ -73,11 +72,9 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
         });
       }
       setIsGenerating(false);
-      setGeneratingWord(null);
     },
     onError: () => {
       setIsGenerating(false);
-      setGeneratingWord(null);
     },
   });
 
@@ -99,15 +96,15 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
 
   // Preload vocab data for all words
   useEffect(() => {
-    if (allWords.length > 0 && !isPreloadingVocab) {
+    if (allWords.length > 0 && !isPreloadingVocab.current) {
       const fetchVocab = async () => {
-        setIsPreloadingVocab(true);
+        isPreloadingVocab.current = true;
         const results = await Promise.all(
           allWords.map(async (word) => {
             try {
               const data = await utils.vodex.lookup.fetch({ word });
               return { word, data, success: !!data };
-            } catch (error) {
+            } catch {
               // Actual network or server errors still go here
               return { word, data: null, success: false };
             }
@@ -127,7 +124,7 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
 
         setVocabData(newVocabData);
         setFailedWords(newFailedWords);
-        setIsPreloadingVocab(false);
+        isPreloadingVocab.current = false;
       };
 
       void fetchVocab();
@@ -218,7 +215,6 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
     if (failedWords.has(word) && !vocabData[word]) {
       // Trigger generation
       setIsGenerating(true);
-      setGeneratingWord(word);
       setSelectedWord(word);
       generateVocab.mutate({ word, storyId });
       return;

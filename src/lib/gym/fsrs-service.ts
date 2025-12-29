@@ -4,6 +4,7 @@ import {
   Rating,
   type Card,
   type RecordLogItem,
+  type Grade,
 } from "ts-fsrs";
 import {
   type PracticeType,
@@ -62,12 +63,11 @@ export function createNewCard(): Card {
  */
 export function scheduleReview(
   card: Card,
-  rating: Rating,
+  rating: Grade,
   reviewDate: Date = new Date(),
 ): { updatedCard: Card; log: RecordLogItem } {
   const schedulingCards = scheduler.repeat(card, reviewDate);
-  // scheduler.repeat returns an array-like object indexed by Rating enum
-  const result = schedulingCards[rating] as RecordLogItem;
+  const result = schedulingCards[rating];
 
   return {
     updatedCard: result.card,
@@ -87,7 +87,7 @@ export function isDue(card: Card, now: Date = new Date()): boolean {
  * Higher ratings + harder practice types + higher stability = more XP
  */
 export function calculateXP(
-  rating: Rating,
+  rating: Grade,
   practiceConfig: PracticeTypeConfig,
   currentStability: number,
 ): number {
@@ -149,7 +149,7 @@ export function getRatingGuidance(
   responseTimeMs: number,
   _practiceType: PracticeType,
 ): {
-  suggestedRating: Rating;
+  suggestedRating: Grade;
   guidance: string;
 } {
   const quickThreshold = 3000; // 3 seconds

@@ -1,7 +1,7 @@
-import { Rating, State } from "ts-fsrs";
+import { Rating, State, type Grade } from "ts-fsrs";
 
 // Re-export Rating and State from ts-fsrs for convenience
-export { Rating, State };
+export { Rating, State, type Grade };
 
 /**
  * Practice Types (in order of difficulty/unlock)

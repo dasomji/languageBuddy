@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/lib/server/api/trpc";
-import type { Rating } from "ts-fsrs";
+import type { Grade } from "ts-fsrs";
 import {
   practiceResults,
   userVocabProgress,
@@ -21,10 +21,7 @@ import {
   checkForNewUnlocks,
   dbProgressToVocabProgress,
 } from "~/lib/gym/fsrs-service";
-import {
-  PRACTICE_TYPE_CONFIGS,
-  PracticeType,
-} from "~/lib/gym/types";
+import { PRACTICE_TYPE_CONFIGS, PracticeType } from "~/lib/gym/types";
 
 export const gymRouter = createTRPCRouter({
   // Get count of due vocabulary
@@ -118,7 +115,10 @@ export const gymRouter = createTRPCRouter({
           and(
             eq(userVocabProgress.userId, ctx.session.user.id),
             eq(userVocabProgress.vocabId, vocabId),
-            eq(userVocabProgress.learningSpaceId, settings.activeLearningSpaceId),
+            eq(
+              userVocabProgress.learningSpaceId,
+              settings.activeLearningSpaceId,
+            ),
           ),
         );
 
@@ -132,30 +132,28 @@ export const gymRouter = createTRPCRouter({
       // 2. Create FSRS card and schedule next review
       const vocabProgress = dbProgressToVocabProgress(progress);
       const card = createCardFromProgress(vocabProgress);
-      const { updatedCard } = scheduleReview(card, rating as Rating);
+      const { updatedCard } = scheduleReview(card, rating as Grade);
 
       // 3. Calculate XP
       const practiceConfig =
         PRACTICE_TYPE_CONFIGS[practiceType as PracticeType] ??
         PRACTICE_TYPE_CONFIGS[PracticeType.FOREIGN_RECOGNITION];
       const xpGained = calculateXP(
-        rating as Rating,
+        rating as Grade,
         practiceConfig,
         progress.stability,
       );
 
       // 4. Check for new practice type unlocks
-      const currentUnlocked = (progress.unlockedPracticeTypes as PracticeType[]) ?? [];
+      const currentUnlocked =
+        (progress.unlockedPracticeTypes as PracticeType[]) ?? [];
       const newUnlocks = checkForNewUnlocks(
         updatedCard.stability,
         currentUnlocked,
       );
 
       // 5. Update progress
-      const updatedUnlockedTypes = [
-        ...currentUnlocked,
-        ...newUnlocks,
-      ];
+      const updatedUnlockedTypes = [...currentUnlocked, ...newUnlocks];
 
       await ctx.db
         .update(userVocabProgress)
@@ -178,7 +176,10 @@ export const gymRouter = createTRPCRouter({
           and(
             eq(userVocabProgress.userId, ctx.session.user.id),
             eq(userVocabProgress.vocabId, vocabId),
-            eq(userVocabProgress.learningSpaceId, settings.activeLearningSpaceId),
+            eq(
+              userVocabProgress.learningSpaceId,
+              settings.activeLearningSpaceId,
+            ),
           ),
         );
 
@@ -305,7 +306,9 @@ export const gymRouter = createTRPCRouter({
 
     // Get total XP from vocab progress
     const xpResult = await ctx.db
-      .select({ totalXp: sql<number>`coalesce(sum(${userVocabProgress.xp}), 0)` })
+      .select({
+        totalXp: sql<number>`coalesce(sum(${userVocabProgress.xp}), 0)`,
+      })
       .from(userVocabProgress)
       .where(
         and(
@@ -339,4 +342,3 @@ export const gymRouter = createTRPCRouter({
     };
   }),
 });
-
