@@ -13,6 +13,7 @@ import { Button } from "~/components/ui/button";
 import { PresignedImage } from "~/components/ui/presigned-image";
 import { Play, Flame, Snowflake } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { ClickableSentence } from "./clickable-sentence";
 
 interface VocabCardProps {
   vocab: {
@@ -90,9 +91,11 @@ export function VocabCard({ vocab, onPlayAudio, onClick }: VocabCardProps) {
         )}
         {vocab.exampleSentence && (
           <div className="bg-muted rounded-md p-3">
-            <p className="text-muted-foreground text-sm italic">
-              &quot;{vocab.exampleSentence}&quot;
-            </p>
+            <ClickableSentence
+              sentence={vocab.exampleSentence}
+              className="text-muted-foreground text-sm italic"
+              showQuotes={true}
+            />
             {vocab.exampleSentenceTranslation && (
               <p className="text-muted-foreground/80 mt-1 text-xs">
                 {vocab.exampleSentenceTranslation}

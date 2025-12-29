@@ -27,6 +27,7 @@ import { useKeyboardShortcut } from "~/hooks/use-keyboard-shortcut";
 import { Loader2, Search, Library, Flame, Snowflake, Play, BookOpen } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { useSearchParams } from "next/navigation";
+import { ClickableSentence } from "~/components/vodex/clickable-sentence";
 
 interface VocabEntry {
   id: string;
@@ -380,14 +381,17 @@ export default function VodexPage() {
                   {selectedVocab.exampleSentence && (
                     <div>
                       <div className="bg-muted mt-2 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <p className="text-lg leading-relaxed italic">
-                            &quot;{selectedVocab.exampleSentence}&quot;
-                          </p>
+                        <div className="flex items-start justify-between">
+                          <ClickableSentence
+                            sentence={selectedVocab.exampleSentence}
+                            className="text-lg italic"
+                            showQuotes={true}
+                          />
                           {selectedVocab.exampleAudioKey && (
                             <Button
                               variant="outline"
                               size="sm"
+                              className="shrink-0"
                               onClick={() =>
                                 handlePlayAudio(selectedVocab.exampleAudioKey!)
                               }
