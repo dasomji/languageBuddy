@@ -45,7 +45,7 @@ export function WaitlistMessage({ userName, userEmail }: WaitlistMessageProps) {
             </div>
 
             {/* Message */}
-            <div className="mb-8 rounded-2xl border border-violet-200/50 bg-gradient-to-r from-violet-50 to-indigo-50 p-6 dark:border-violet-700/50 dark:from-violet-900/30 dark:to-indigo-900/30">
+            <div className="mb-8 rounded-2xl border border-violet-200/50 bg-linear-to-r from-violet-50 to-indigo-50 p-6 dark:border-violet-700/50 dark:from-violet-900/30 dark:to-indigo-900/30">
               <p className="text-center leading-relaxed text-slate-700 dark:text-slate-200">
                 EdgeLang is currently in{" "}
                 <span className="font-semibold text-violet-600 dark:text-violet-400">
