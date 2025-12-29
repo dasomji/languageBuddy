@@ -19,10 +19,7 @@ import {
   Lock,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
-import {
-  PRACTICE_TYPE_CONFIGS,
-  type PracticeExercise,
-} from "~/lib/gym/types";
+import { PRACTICE_TYPE_CONFIGS, type PracticeExercise } from "~/lib/gym/types";
 
 export default function GymPage() {
   const [sessionData, setSessionData] = useState<{
@@ -34,10 +31,8 @@ export default function GymPage() {
   const { data: activeSpace, isLoading: isLoadingSpace } =
     api.learningSpace.getActive.useQuery();
 
-  const { data: dueData, isLoading: isLoadingDue } = api.gym.getDueCount.useQuery(
-    undefined,
-    { enabled: !!activeSpace },
-  );
+  const { data: dueData, isLoading: isLoadingDue } =
+    api.gym.getDueCount.useQuery(undefined, { enabled: !!activeSpace });
 
   const { data: stats, isLoading: isLoadingStats } = api.gym.getStats.useQuery(
     undefined,
@@ -79,7 +74,7 @@ export default function GymPage() {
   // Show practice session if active
   if (sessionData) {
     return (
-      <div className="fixed inset-0 z-50 bg-background">
+      <div className="bg-background fixed inset-0 z-50">
         <PracticeSession
           sessionId={sessionData.sessionId}
           exercises={sessionData.exercises}
@@ -108,7 +103,7 @@ export default function GymPage() {
       {/* Main Content */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Start Practice Card */}
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 md:col-span-2 lg:col-span-2">
+        <Card className="border-primary/20 from-primary/5 to-primary/10 bg-linear-to-br md:col-span-2 lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Play className="h-5 w-5" />
@@ -207,7 +202,9 @@ export default function GymPage() {
             ) : (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-sm">Total XP</span>
+                  <span className="text-muted-foreground text-sm">
+                    Total XP
+                  </span>
                   <span className="flex items-center gap-1 font-bold text-amber-600">
                     <Zap className="h-4 w-4" />
                     {stats?.totalXp ?? 0}
@@ -217,7 +214,9 @@ export default function GymPage() {
                   <span className="text-muted-foreground text-sm">
                     Practice Sessions
                   </span>
-                  <span className="font-medium">{stats?.totalSessions ?? 0}</span>
+                  <span className="font-medium">
+                    {stats?.totalSessions ?? 0}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground text-sm">
@@ -302,4 +301,3 @@ export default function GymPage() {
     </div>
   );
 }
-

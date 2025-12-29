@@ -1,11 +1,9 @@
 "use client";
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
-import { PresignedImage } from "~/components/ui/presigned-image";
 import {
   Eye,
   Play,
@@ -39,7 +37,8 @@ export function ExerciseCard({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const practiceConfig = PRACTICE_TYPE_CONFIGS[exercise.practiceType];
-  const isRecognition = exercise.practiceType === PracticeType.FOREIGN_RECOGNITION;
+  const isRecognition =
+    exercise.practiceType === PracticeType.FOREIGN_RECOGNITION;
 
   // Focus input on mount
   useEffect(() => {
@@ -116,7 +115,8 @@ export function ExerciseCard({
           </h2>
         </div>
 
-        {/* Image (if available and recognition type) */}
+        {/* 
+        Image (if available and recognition type)
         {isRecognition && exercise.vocab.imageKey && (
           <div className="flex justify-center">
             <div className="relative aspect-square w-48 overflow-hidden rounded-xl border shadow-sm">
@@ -127,7 +127,7 @@ export function ExerciseCard({
               />
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Audio button */}
         {exercise.vocab.exampleAudioKey && onPlayAudio && (
@@ -222,7 +222,9 @@ export function ExerciseCard({
             {exercise.vocab.exampleSentence && (
               <div className="bg-muted rounded-lg p-4">
                 <p className="mb-1 text-sm font-medium">Example:</p>
-                <p className="italic">&quot;{exercise.vocab.exampleSentence}&quot;</p>
+                <p className="italic">
+                  &quot;{exercise.vocab.exampleSentence}&quot;
+                </p>
                 {exercise.vocab.exampleSentenceTranslation && (
                   <p className="text-muted-foreground mt-1 text-sm">
                     {exercise.vocab.exampleSentenceTranslation}
@@ -241,4 +243,3 @@ export function ExerciseCard({
     </Card>
   );
 }
-
