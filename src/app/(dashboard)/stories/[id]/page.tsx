@@ -51,6 +51,12 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   const [failedWords, setFailedWords] = useState<Set<string>>(new Set());
   const isPreloadingVocab = useRef(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(
+    null,
+  );
 
   const storyId = resolvedParams.id;
   const { data: story, isLoading } = api.story.getById.useQuery({
@@ -197,6 +203,39 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
     goToPage(currentPage - 1);
   }, [currentPage, goToPage]);
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    const touch = e.targetTouches[0];
+    if (touch) {
+      setTouchStart({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const touch = e.targetTouches[0];
+    if (touch) {
+      setTouchEnd({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+
+  const onTouchEnd = () => {
+    if (touchStart === null || touchEnd === null) return;
+    const minSwipeDistance = 50;
+    const distanceX = touchStart.x - touchEnd.x;
+    const distanceY = touchStart.y - touchEnd.y;
+
+    // Check if horizontal swipe is more significant than vertical
+    if (Math.abs(distanceX) > Math.abs(distanceY)) {
+      const isLeftSwipe = distanceX > minSwipeDistance;
+      const isRightSwipe = distanceX < -minSwipeDistance;
+      if (isLeftSwipe) {
+        nextPage();
+      } else if (isRightSwipe) {
+        prevPage();
+      }
+    }
+  };
+
   const readAgain = () => {
     setShowCompletion(false);
     setCurrentPage(1);
@@ -288,7 +327,12 @@ export default function StoryReaderPage({ params }: StoryReaderPageProps) {
   }
 
   return (
-    <div className="flex max-h-full min-h-0 flex-1 flex-col">
+    <div
+      className="flex max-h-full min-h-0 flex-1 flex-col"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       <HeaderSetter>
         <Breadcrumb>
           <BreadcrumbList>
