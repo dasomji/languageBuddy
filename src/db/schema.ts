@@ -7,7 +7,9 @@ import {
   integer,
   primaryKey,
   uuid,
+  real,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { user } from "./auth-schema";
 
 export const posts = pgTable("posts", {
@@ -108,9 +110,31 @@ export const userVocabProgress = pgTable(
     vocabId: uuid("vocab_id")
       .notNull()
       .references(() => vocabularies.id, { onDelete: "cascade" }),
+
+    // Legacy fields (kept for compatibility)
     xp: integer("xp").notNull().default(0),
     srsLevel: integer("srs_level").notNull().default(0),
     nextReviewAt: timestamp("next_review_at"),
+
+    // FSRS Core Fields (matching ts-fsrs Card interface)
+    difficulty: real("difficulty").notNull().default(5.0), // 1-10 scale
+    stability: real("stability").notNull().default(0.0), // days
+    state: integer("state").notNull().default(0), // 0=New, 1=Learning, 2=Review, 3=Relearning
+    elapsedDays: integer("elapsed_days").notNull().default(0),
+    scheduledDays: integer("scheduled_days").notNull().default(0),
+    reps: integer("reps").notNull().default(0), // total review count
+    lapses: integer("lapses").notNull().default(0), // times pressed "Again"
+    lastReview: timestamp("last_review"),
+    due: timestamp("due").notNull().defaultNow(),
+
+    // Practice Type Tracking
+    lastPracticeType: text("last_practice_type"),
+    unlockedPracticeTypes: text("unlocked_practice_types")
+      .array()
+      .notNull()
+      .default(sql`ARRAY['foreign_recognition']::text[]`),
+
+    // Metadata
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at")
       .notNull()
@@ -233,5 +257,53 @@ export const chatMessages = pgTable("chat_messages", {
     .references(() => chatConversations.id, { onDelete: "cascade" }),
   role: text("role").notNull(), // 'user' | 'assistant'
   content: text("content").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Gym Practice Sessions
+export const practiceSessions = pgTable("practice_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  learningSpaceId: uuid("learning_space_id")
+    .notNull()
+    .references(() => learningSpaces.id, { onDelete: "cascade" }),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  targetCount: integer("target_count").notNull().default(20),
+  completedCount: integer("completed_count").notNull().default(0),
+  totalXpGained: integer("total_xp_gained").notNull().default(0),
+});
+
+// Individual Practice Results
+export const practiceResults = pgTable("practice_results", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sessionId: uuid("session_id")
+    .notNull()
+    .references(() => practiceSessions.id, { onDelete: "cascade" }),
+  vocabId: uuid("vocab_id")
+    .notNull()
+    .references(() => vocabularies.id, { onDelete: "cascade" }),
+  practiceType: text("practice_type").notNull(),
+
+  // User Response (FSRS 4-point scale)
+  rating: integer("rating").notNull(), // 1=Again, 2=Hard, 3=Good, 4=Easy
+  userAnswer: text("user_answer"),
+  correctAnswer: text("correct_answer"),
+  responseTimeMs: integer("response_time_ms").notNull(),
+
+  // Context
+  promptText: text("prompt_text"),
+
+  // Rewards
+  xpGained: integer("xp_gained").notNull().default(0),
+
+  // FSRS State Snapshot (for analytics)
+  stabilityBefore: real("stability_before"),
+  stabilityAfter: real("stability_after"),
+  difficultyBefore: real("difficulty_before"),
+  difficultyAfter: real("difficulty_after"),
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

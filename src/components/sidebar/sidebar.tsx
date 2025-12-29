@@ -7,6 +7,7 @@ import {
   Settings,
   PackagePlus,
   MessageCircle,
+  Dumbbell,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -34,6 +35,9 @@ export function AppSidebar() {
 
   const { data: initialStats } = api.stats.getStats.useQuery();
   const [stats, setStats] = useState(initialStats);
+
+  // Get gym due count
+  const { data: gymData } = api.gym.getDueCount.useQuery();
 
   api.stats.getStatsSubscription.useSubscription(undefined, {
     onData: (data) => {
@@ -67,6 +71,13 @@ export function AppSidebar() {
       href: "/stories",
       icon: BookOpen,
       count: stats?.stories,
+    },
+    {
+      name: "Gym",
+      href: "/gym",
+      icon: Dumbbell,
+      count: gymData?.dueCount,
+      highlight: (gymData?.dueCount ?? 0) > 0,
     },
     { name: "Chat History", href: "/chat", icon: MessageCircle },
     { name: "Settings", href: "/settings", icon: Settings },
@@ -116,8 +127,12 @@ export function AppSidebar() {
                         </div>
                         {item.count !== undefined && item.count > 0 && (
                           <Badge
-                            variant="secondary"
-                            className="ml-auto h-5 px-1.5 text-[10px] font-medium"
+                            variant={item.highlight ? "default" : "secondary"}
+                            className={`ml-auto h-5 px-1.5 text-[10px] font-medium ${
+                              item.highlight
+                                ? "bg-primary text-primary-foreground"
+                                : ""
+                            }`}
                           >
                             {item.count}
                           </Badge>
