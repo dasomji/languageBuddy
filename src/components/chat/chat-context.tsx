@@ -39,9 +39,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // If context changed, reset conversation
       if (
         !newContext ||
-        !prevContext ||
-        prevContext.type !== newContext.type ||
-        prevContext.id !== newContext.id
+        prevContext?.type !== newContext.type ||
+        prevContext?.id !== newContext.id
       ) {
         setConversationId(null);
       }
@@ -87,4 +86,3 @@ export function useChatContext() {
   }
   return context;
 }
-
