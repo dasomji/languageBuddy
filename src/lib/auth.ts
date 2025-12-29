@@ -22,6 +22,12 @@ export const auth = betterAuth({
     enabled: true,
   },
   user: {
+    additionalFields: {
+      waitlist: {
+        type: "boolean",
+        defaultValue: true,
+      },
+    },
     deleteUser: {
       enabled: true,
       beforeDelete: async (

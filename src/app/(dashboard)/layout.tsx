@@ -25,9 +25,10 @@ export default async function DashboardLayout({
     redirect("/auth/signin");
   }
 
-  // Check if user is on waitlist (banned = true means waitlisted)
+  // Check if user is on waitlist
   // Admins bypass the waitlist check
-  const isWaitlisted = session.user.banned === true && session.user.role !== "admin";
+  const isWaitlisted =
+    session.user.waitlist === true && session.user.role !== "admin";
 
   if (isWaitlisted) {
     return (
@@ -47,15 +48,17 @@ export default async function DashboardLayout({
             <header className="bg-background sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 border-b px-4 md:px-6">
               <SidebarTrigger />
               <div className="flex flex-1 items-center gap-2">
-                <DashboardHeaderContent fallback={
-                  <h2 className="text-muted-foreground text-sm font-semibold md:hidden">
-                    LanguageBuddy
-                  </h2>
-                } />
+                <DashboardHeaderContent
+                  fallback={
+                    <h2 className="text-muted-foreground text-sm font-semibold md:hidden">
+                      LanguageBuddy
+                    </h2>
+                  }
+                />
               </div>
             </header>
-            <main className="flex flex-1 flex-col min-h-0">
-              <div className="mx-auto w-full max-w-7xl flex-1 flex flex-col min-h-0 px-4 py-6 md:px-8 md:py-8">
+            <main className="flex min-h-0 flex-1 flex-col">
+              <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-4 py-6 md:px-8 md:py-8">
                 {children}
               </div>
             </main>

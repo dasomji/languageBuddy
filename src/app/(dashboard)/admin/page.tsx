@@ -54,7 +54,7 @@ import {
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
-type UserFilter = "all" | "waitlist" | "approved" | "admin";
+type UserFilter = "all" | "waitlist" | "approved" | "banned" | "admin";
 
 export default function AdminPage() {
   return (
@@ -140,10 +140,10 @@ function StatsCards() {
       color: "text-emerald-600",
     },
     {
-      title: "Active Sessions",
-      value: stats?.activeSessions ?? 0,
-      icon: Activity,
-      color: "text-purple-600",
+      title: "Banned",
+      value: stats?.bannedUsers ?? 0,
+      icon: UserX,
+      color: "text-destructive",
     },
   ];
 
@@ -185,9 +185,31 @@ function UsersTab() {
     },
   });
 
-  const banUser = api.admin.banUser.useMutation({
+  const moveToWaitlist = api.admin.moveToWaitlist.useMutation({
     onSuccess: () => {
       toast.success("User moved to waitlist");
+      void utils.admin.listUsers.invalidate();
+      void utils.admin.getStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const banUser = api.admin.banUser.useMutation({
+    onSuccess: () => {
+      toast.success("User banned successfully");
+      void utils.admin.listUsers.invalidate();
+      void utils.admin.getStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const unbanUser = api.admin.unbanUser.useMutation({
+    onSuccess: () => {
+      toast.success("User unbanned successfully");
       void utils.admin.listUsers.invalidate();
       void utils.admin.getStats.invalidate();
     },
@@ -228,6 +250,7 @@ function UsersTab() {
               <SelectItem value="all">All Users</SelectItem>
               <SelectItem value="waitlist">Waitlist</SelectItem>
               <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="banned">Banned</SelectItem>
               <SelectItem value="admin">Admins</SelectItem>
             </SelectContent>
           </Select>
@@ -265,20 +288,27 @@ function UsersTab() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {user.banned ? (
-                      <Badge variant="secondary" className="gap-1">
-                        <Clock className="h-3 w-3" />
-                        Waitlist
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="default"
-                        className="gap-1 bg-emerald-600 hover:bg-emerald-700"
-                      >
-                        <CheckCircle className="h-3 w-3" />
-                        Approved
-                      </Badge>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {user.banned ? (
+                        <Badge variant="destructive" className="gap-1">
+                          <UserX className="h-3 w-3" />
+                          Banned
+                        </Badge>
+                      ) : user.waitlist ? (
+                        <Badge variant="secondary" className="gap-1">
+                          <Clock className="h-3 w-3" />
+                          Waitlist
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="default"
+                          className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          <CheckCircle className="h-3 w-3" />
+                          Approved
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {user.role === "admin" ? (
@@ -297,7 +327,8 @@ function UsersTab() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {user.banned ? (
+                      {/* Waitlist Actions */}
+                      {user.waitlist && !user.banned ? (
                         <Button
                           size="sm"
                           variant="outline"
@@ -312,42 +343,77 @@ function UsersTab() {
                           )}
                           Approve
                         </Button>
-                      ) : user.role !== "admin" ? (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="gap-1 text-amber-600 hover:text-amber-700"
-                            >
-                              <UserX className="h-3 w-3" />
-                              Waitlist
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Move to Waitlist?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will revoke access for {user.name}. They
-                                will see the beta message until approved again.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  banUser.mutate({ userId: user.id })
-                                }
-                              >
-                                Move to Waitlist
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                      ) : !user.waitlist && !user.banned && user.role !== "admin" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 text-amber-600 hover:text-amber-700"
+                          onClick={() => moveToWaitlist.mutate({ userId: user.id })}
+                          disabled={moveToWaitlist.isPending}
+                        >
+                          {moveToWaitlist.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Clock className="h-3 w-3" />
+                          )}
+                          Waitlist
+                        </Button>
                       ) : null}
-                      {user.role !== "admin" && !user.banned && (
+
+                      {/* Ban Actions */}
+                      {user.role !== "admin" && (
+                        user.banned ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={() => unbanUser.mutate({ userId: user.id })}
+                            disabled={unbanUser.isPending}
+                          >
+                            {unbanUser.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                            Unban
+                          </Button>
+                        ) : (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1 text-destructive hover:text-destructive"
+                              >
+                                <UserX className="h-3 w-3" />
+                                Ban
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Ban User?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently ban {user.name} from the platform.
+                                  They will not be able to sign in.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() =>
+                                    banUser.mutate({ userId: user.id })
+                                  }
+                                >
+                                  Ban User
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )
+                      )}
+
+                      {user.role !== "admin" && !user.waitlist && !user.banned && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button size="sm" variant="outline" className="gap-1">

@@ -14,7 +14,9 @@ export const adminRouter = createTRPCRouter({
       z.object({
         limit: z.number().min(1).max(100).default(50),
         offset: z.number().min(0).default(0),
-        filter: z.enum(["all", "waitlist", "approved", "admin"]).default("all"),
+        filter: z
+          .enum(["all", "waitlist", "approved", "banned", "admin"])
+          .default("all"),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -24,13 +26,17 @@ export const adminRouter = createTRPCRouter({
       let whereCondition;
       switch (filter) {
         case "waitlist":
-          whereCondition = eq(user.banned, true);
+          whereCondition = eq(user.waitlist, true);
           break;
         case "approved":
           whereCondition = and(
+            eq(user.waitlist, false),
             eq(user.banned, false),
             eq(user.role, "user"),
           );
+          break;
+        case "banned":
+          whereCondition = eq(user.banned, true);
           break;
         case "admin":
           whereCondition = eq(user.role, "admin");
@@ -49,6 +55,7 @@ export const adminRouter = createTRPCRouter({
             image: user.image,
             role: user.role,
             banned: user.banned,
+            waitlist: user.waitlist,
             banReason: user.banReason,
             createdAt: user.createdAt,
           })
@@ -57,10 +64,7 @@ export const adminRouter = createTRPCRouter({
           .orderBy(desc(user.createdAt))
           .limit(limit)
           .offset(offset),
-        ctx.db
-          .select({ count: count() })
-          .from(user)
-          .where(whereCondition),
+        ctx.db.select({ count: count() }).from(user).where(whereCondition),
       ]);
 
       return {
@@ -71,7 +75,7 @@ export const adminRouter = createTRPCRouter({
     }),
 
   /**
-   * Approve a user (unban them from waitlist)
+   * Approve a user (remove from waitlist)
    */
   approveUser: adminProcedure
     .input(z.object({ userId: z.string() }))
@@ -90,9 +94,7 @@ export const adminRouter = createTRPCRouter({
       await ctx.db
         .update(user)
         .set({
-          banned: false,
-          banReason: null,
-          banExpires: null,
+          waitlist: false,
         })
         .where(eq(user.id, input.userId));
 
@@ -111,7 +113,42 @@ export const adminRouter = createTRPCRouter({
     }),
 
   /**
-   * Ban a user (put them back on waitlist or permanently ban)
+   * Move a user back to the waitlist
+   */
+  moveToWaitlist: adminProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const targetUser = await ctx.db.query.user.findFirst({
+        where: eq(user.id, input.userId),
+      });
+
+      if (!targetUser) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "User not found",
+        });
+      }
+
+      // Prevent moving admins to waitlist
+      if (targetUser.role === "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Cannot move an admin to waitlist",
+        });
+      }
+
+      await ctx.db
+        .update(user)
+        .set({
+          waitlist: true,
+        })
+        .where(eq(user.id, input.userId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Ban a user
    */
   banUser: adminProcedure
     .input(
@@ -144,7 +181,36 @@ export const adminRouter = createTRPCRouter({
         .update(user)
         .set({
           banned: true,
-          banReason: input.reason ?? "Moved to waitlist",
+          banReason: input.reason ?? "Violated terms of service",
+        })
+        .where(eq(user.id, input.userId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Unban a user
+   */
+  unbanUser: adminProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const targetUser = await ctx.db.query.user.findFirst({
+        where: eq(user.id, input.userId),
+      });
+
+      if (!targetUser) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "User not found",
+        });
+      }
+
+      await ctx.db
+        .update(user)
+        .set({
+          banned: false,
+          banReason: null,
+          banExpires: null,
         })
         .where(eq(user.id, input.userId));
 
@@ -275,17 +341,19 @@ export const adminRouter = createTRPCRouter({
       totalUsersResult,
       waitlistUsersResult,
       approvedUsersResult,
+      bannedUsersResult,
       activeSessionsResult,
     ] = await Promise.all([
       ctx.db.select({ count: count() }).from(user),
       ctx.db
         .select({ count: count() })
         .from(user)
-        .where(eq(user.banned, true)),
+        .where(eq(user.waitlist, true)),
       ctx.db
         .select({ count: count() })
         .from(user)
-        .where(eq(user.banned, false)),
+        .where(and(eq(user.waitlist, false), eq(user.banned, false))),
+      ctx.db.select({ count: count() }).from(user).where(eq(user.banned, true)),
       ctx.db
         .select({ count: count() })
         .from(session)
@@ -296,8 +364,8 @@ export const adminRouter = createTRPCRouter({
       totalUsers: totalUsersResult[0]?.count ?? 0,
       waitlistUsers: waitlistUsersResult[0]?.count ?? 0,
       approvedUsers: approvedUsersResult[0]?.count ?? 0,
+      bannedUsers: bannedUsersResult[0]?.count ?? 0,
       activeSessions: activeSessionsResult[0]?.count ?? 0,
     };
   }),
 });
-
